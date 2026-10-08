@@ -22,6 +22,16 @@ public class RegisterRequest {
     @NotNull
     private UserRole role;
 
+    private com.brunoverse.enums.Gender gender;
+
+    public com.brunoverse.enums.Gender getGender() {
+        return gender;
+    }
+
+    public void setGender(com.brunoverse.enums.Gender gender) {
+        this.gender = gender;
+    }
+
     public String getName() {
         return name;
     }

@@ -26,6 +26,19 @@ public class User {
     @Column(nullable = false)
     private UserRole role;
 
+    @Column(name = "avatar_url", length = 500)
+    private String avatarUrl;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "gender")
+    private com.brunoverse.enums.Gender gender = com.brunoverse.enums.Gender.PREFER_NOT_TO_SAY;
+
+    @Column(name = "address", length = 500)
+    private String address;
+
+    @Column(name = "bio", length = 1000)
+    private String bio;
+
     public Long getId() {
         return id;
     }
@@ -72,5 +85,37 @@ public class User {
 
     public void setRole(UserRole role) {
         this.role = role;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
+    }
+
+    public com.brunoverse.enums.Gender getGender() {
+        return gender;
+    }
+
+    public void setGender(com.brunoverse.enums.Gender gender) {
+        this.gender = gender;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public String getBio() {
+        return bio;
+    }
+
+    public void setBio(String bio) {
+        this.bio = bio;
     }
 }

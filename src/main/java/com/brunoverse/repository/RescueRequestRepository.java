@@ -11,4 +11,6 @@ public interface RescueRequestRepository extends JpaRepository<RescueRequest, Lo
     List<RescueRequest> findByStatus(RescueStatus status);
 
     List<RescueRequest> findByAssignedRescuerId(Long rescuerId);
+
+    List<RescueRequest> findByReportedById(Long reportedById);
 }

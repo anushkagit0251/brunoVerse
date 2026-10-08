@@ -2,7 +2,9 @@ package com.brunoverse.controller;
 
 import com.brunoverse.entity.User;
 import com.brunoverse.repository.UserRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -24,6 +26,19 @@ public class UserController {
     @GetMapping("/{id}")
     public User getUser(@PathVariable Long id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+    }
+
+    @PutMapping("/{id}")
+    public User updateUser(@PathVariable Long id, @RequestBody User updated) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        if (updated.getName() != null && !updated.getName().isBlank()) user.setName(updated.getName());
+        if (updated.getPhone() != null) user.setPhone(updated.getPhone());
+        if (updated.getGender() != null) user.setGender(updated.getGender());
+        if (updated.getAvatarUrl() != null) user.setAvatarUrl(updated.getAvatarUrl());
+        if (updated.getAddress() != null) user.setAddress(updated.getAddress());
+        if (updated.getBio() != null) user.setBio(updated.getBio());
+        return userRepository.save(user);
     }
 }
