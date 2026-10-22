@@ -22,7 +22,10 @@ public class FileUploadController {
     private final String uploadDir;
 
     public FileUploadController() {
-        this.uploadDir = System.getProperty("user.dir") + "/uploads/";
+        String envDir = System.getenv("UPLOAD_DIR");
+        this.uploadDir = (envDir != null && !envDir.isBlank())
+                ? (envDir.endsWith("/") ? envDir : envDir + "/")
+                : System.getProperty("user.dir") + "/uploads/";
         File dir = new File(uploadDir);
         if (!dir.exists()) {
             dir.mkdirs();

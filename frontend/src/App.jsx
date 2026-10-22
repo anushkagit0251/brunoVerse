@@ -33,11 +33,14 @@ function ProtectedRoute() {
   }
 
   if (!user) {
-    return <Navigate to="/welcome" replace />;
+    return <Navigate to="/login" replace />;
   }
 
+  const role = user?.role || 'PET_OWNER';
+  const isRescuer = role === 'RESCUER';
+
   return (
-    <div className="app-container">
+    <div className={`app-container ${isRescuer ? 'theme-rescuer' : ''}`}>
       <Sidebar />
       <div className="main-wrapper">
         <Navbar />
@@ -52,7 +55,7 @@ function ProtectedRoute() {
 // Automatic dashboard redirect based on role
 function DashboardRedirect() {
   const { user } = useAuth();
-  if (!user) return <Navigate to="/welcome" replace />;
+  if (!user) return <Navigate to="/login" replace />;
 
   switch (user.role) {
     case 'RESCUER':

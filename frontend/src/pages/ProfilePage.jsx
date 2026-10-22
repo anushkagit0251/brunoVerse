@@ -1,10 +1,12 @@
-import React, { useState, useRef } from 'react';
-import { User, Mail, Phone, Shield, Save, CheckCircle2, LogOut, Camera, Upload, MapPin, FileText, Trash2, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { User, Mail, Phone, Shield, Save, CheckCircle2, LogOut, Camera, Upload, MapPin, FileText, Trash2, Loader2, Undo2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { userApi } from '../api/userApi';
 import { uploadApi } from '../api/uploadApi';
 import { useNavigate } from 'react-router-dom';
 import { getUserAvatar } from '../utils/avatar';
+import { getAssetUrl } from '../utils/url';
+import { parseApiError } from '../utils/errorHandler';
 
 export default function ProfilePage() {
   const { user, updateUserProfile, logout } = useAuth();
@@ -18,10 +20,76 @@ export default function ProfilePage() {
   const [address, setAddress] = useState(user?.address || '');
   const [bio, setBio] = useState(user?.bio || '');
 
+  // Baseline state to support Cancel Editing
+  const [savedBaseline, setSavedBaseline] = useState(null);
+
+  const [loadingProfile, setLoadingProfile] = useState(true);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Fetch real-time fresh profile data from backend on mount or when user changes
+  useEffect(() => {
+    let mounted = true;
+    const effectiveUserId = user?.userId || user?.id;
+
+    if (!effectiveUserId) {
+      setLoadingProfile(false);
+      return;
+    }
+
+    const loadFreshProfile = async () => {
+      setLoadingProfile(true);
+      try {
+        const freshUser = await userApi.getById(effectiveUserId);
+        if (mounted && freshUser) {
+          setName(freshUser.name || '');
+          setPhone(freshUser.phone || '');
+          setGender(freshUser.gender || 'PREFER_NOT_TO_SAY');
+          setAvatarUrl(freshUser.avatarUrl || '');
+          setAddress(freshUser.address || '');
+          setBio(freshUser.bio || '');
+
+          setSavedBaseline({
+            name: freshUser.name || '',
+            phone: freshUser.phone || '',
+            gender: freshUser.gender || 'PREFER_NOT_TO_SAY',
+            avatarUrl: freshUser.avatarUrl || '',
+            address: freshUser.address || '',
+            bio: freshUser.bio || ''
+          });
+        }
+      } catch (err) {
+        console.warn('Could not fetch latest profile from backend, using session state:', err);
+        if (mounted && user) {
+          setName(user.name || '');
+          setPhone(user.phone || '');
+          setGender(user.gender || 'PREFER_NOT_TO_SAY');
+          setAvatarUrl(user.avatarUrl || '');
+          setAddress(user.address || '');
+          setBio(user.bio || '');
+
+          setSavedBaseline({
+            name: user.name || '',
+            phone: user.phone || '',
+            gender: user.gender || 'PREFER_NOT_TO_SAY',
+            avatarUrl: user.avatarUrl || '',
+            address: user.address || '',
+            bio: user.bio || ''
+          });
+        }
+      } finally {
+        if (mounted) setLoadingProfile(false);
+      }
+    };
+
+    loadFreshProfile();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user?.userId, user?.id]);
 
   // Handle Profile Image Upload
   const handleImageFileChange = async (e) => {
@@ -35,12 +103,13 @@ export default function ProfilePage() {
 
     setUploadingImage(true);
     setErrorMsg('');
+
     try {
       const res = await uploadApi.uploadFile(file);
-      const fullUrl = res.url.startsWith('http') ? res.url : `${window.location.origin.includes('localhost') ? 'http://localhost:8080' : ''}${res.url}`;
+      const fullUrl = getAssetUrl(res.url);
       setAvatarUrl(fullUrl);
     } catch (err) {
-      console.error('Failed to upload profile picture:', err);
+      console.warn('Profile photo upload fallback to local preview:', err);
       // Fallback preview locally using FileReader
       const reader = new FileReader();
       reader.onload = (event) => {
@@ -57,9 +126,41 @@ export default function ProfilePage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  // Cancel Editing: revert fields back to baseline
+  const handleCancelEditing = () => {
+    if (savedBaseline) {
+      setName(savedBaseline.name);
+      setPhone(savedBaseline.phone);
+      setGender(savedBaseline.gender);
+      setAvatarUrl(savedBaseline.avatarUrl);
+      setAddress(savedBaseline.address);
+      setBio(savedBaseline.bio);
+    } else if (user) {
+      setName(user.name || '');
+      setPhone(user.phone || '');
+      setGender(user.gender || 'PREFER_NOT_TO_SAY');
+      setAvatarUrl(user.avatarUrl || '');
+      setAddress(user.address || '');
+      setBio(user.bio || '');
+    }
+    setErrorMsg('');
+    setSavedSuccess(false);
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!user?.userId) return;
+    const effectiveUserId = user?.userId || user?.id;
+
+    if (!effectiveUserId) {
+      setErrorMsg('No active user session found. Please sign in again.');
+      return;
+    }
+
+    if (!name.trim()) {
+      setErrorMsg('Full name cannot be empty.');
+      return;
+    }
+
     setSaving(true);
     setSavedSuccess(false);
     setErrorMsg('');
@@ -74,9 +175,11 @@ export default function ProfilePage() {
         bio: bio.trim()
       };
 
-      const updated = await userApi.update(user.userId, payload);
-      
+      const updated = await userApi.update(effectiveUserId, payload);
+
       updateUserProfile({
+        userId: updated.id || effectiveUserId,
+        id: updated.id || effectiveUserId,
         name: updated.name,
         phone: updated.phone,
         gender: updated.gender,
@@ -85,11 +188,21 @@ export default function ProfilePage() {
         bio: updated.bio
       });
 
+      setSavedBaseline({
+        name: updated.name || '',
+        phone: updated.phone || '',
+        gender: updated.gender || 'PREFER_NOT_TO_SAY',
+        avatarUrl: updated.avatarUrl || '',
+        address: updated.address || '',
+        bio: updated.bio || ''
+      });
+
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3500);
     } catch (err) {
       console.error('Failed to update profile:', err);
-      setErrorMsg('Failed to save profile changes. Please try again.');
+      const msg = parseApiError(err, 'Failed to save profile changes. Please try again.');
+      setErrorMsg(msg);
     } finally {
       setSaving(false);
     }
@@ -113,224 +226,255 @@ export default function ProfilePage() {
       </div>
 
       <div className="section-card" style={{ padding: '28px', borderRadius: '24px' }}>
-        {/* Profile Header & Avatar Upload Section */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '24px', paddingBottom: '24px', borderBottom: '1px solid var(--border-light)', flexWrap: 'wrap' }}>
-          <div style={{ position: 'relative' }}>
-            <div style={{ width: '92px', height: '92px', borderRadius: '50%', overflow: 'hidden', border: '3px solid var(--primary)', background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {uploadingImage ? (
-                <Loader2 size={32} className="animate-spin" color="var(--primary)" />
-              ) : (
-                <img 
-                  src={currentPreviewAvatar} 
-                  alt={name || 'Profile'} 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                />
-              )}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              title="Upload new profile picture"
-              style={{
-                position: 'absolute',
-                bottom: '0',
-                right: '0',
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                background: 'var(--primary)',
-                color: '#fff',
-                border: '2px solid #fff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
-              }}
-            >
-              <Camera size={16} />
-            </button>
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              style={{ display: 'none' }} 
-              accept="image/png, image/jpeg, image/jpg, image/webp" 
-              onChange={handleImageFileChange} 
-            />
+        {loadingProfile ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 0', gap: '10px', color: 'var(--text-muted)' }}>
+            <Loader2 size={24} className="animate-spin" color="var(--primary)" />
+            <span>Loading profile details from database...</span>
           </div>
+        ) : (
+          <>
+            {/* Profile Header & Avatar Upload Section */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '24px', paddingBottom: '24px', borderBottom: '1px solid var(--border-light)', flexWrap: 'wrap' }}>
+              <div style={{ position: 'relative' }}>
+                <div style={{ width: '92px', height: '92px', borderRadius: '50%', overflow: 'hidden', border: '3px solid var(--primary)', background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {uploadingImage ? (
+                    <Loader2 size={32} className="animate-spin" color="var(--primary)" />
+                  ) : (
+                    <img 
+                      src={currentPreviewAvatar} 
+                      alt={name || 'Profile'} 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                    />
+                  )}
+                </div>
 
-          <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)' }}>{name || user?.name}</h2>
-              <span className="badge badge-healthy" style={{ fontSize: '11px', textTransform: 'capitalize' }}>
-                {user?.role?.replace('_', ' ')?.toLowerCase()}
-              </span>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Upload new profile picture"
+                  disabled={uploadingImage || saving}
+                  style={{
+                    position: 'absolute',
+                    bottom: '0',
+                    right: '0',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    background: 'var(--primary)',
+                    color: '#fff',
+                    border: '2px solid #fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
+                  }}
+                >
+                  <Camera size={16} />
+                </button>
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  style={{ display: 'none' }} 
+                  accept="image/png, image/jpeg, image/jpg, image/webp" 
+                  onChange={handleImageFileChange} 
+                />
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)' }}>{name || user?.name || 'User Profile'}</h2>
+                  <span className="badge badge-healthy" style={{ fontSize: '11px', textTransform: 'capitalize' }}>
+                    {user?.role?.replace('_', ' ')?.toLowerCase() || 'pet owner'}
+                  </span>
+                </div>
+                <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '2px' }}>{user?.email}</div>
+
+                <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
+                  <button 
+                    type="button" 
+                    className="btn-secondary" 
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingImage || saving}
+                    style={{ padding: '6px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <Upload size={14} />
+                    <span>Change Photo</span>
+                  </button>
+
+                  {avatarUrl && (
+                    <button 
+                      type="button" 
+                      onClick={handleRemovePhoto}
+                      disabled={saving}
+                      style={{ padding: '6px 12px', fontSize: '12px', borderRadius: '10px', background: '#FEE2E2', color: '#DC2626', border: 'none', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+                    >
+                      <Trash2 size={14} />
+                      <span>Remove Custom Photo</span>
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
-            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '2px' }}>{user?.email}</div>
 
-            <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
-              <button 
-                type="button" 
-                className="btn-secondary" 
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingImage}
-                style={{ padding: '6px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <Upload size={14} />
-                <span>Change Photo</span>
-              </button>
+            {savedSuccess && (
+              <div style={{ marginTop: '18px', padding: '12px 16px', background: '#DCFCE7', color: '#16A34A', borderRadius: '12px', fontSize: '13.5px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <CheckCircle2 size={18} />
+                <span>Profile successfully updated and saved in database!</span>
+              </div>
+            )}
 
-              {avatarUrl && (
+            {errorMsg && (
+              <div style={{ marginTop: '18px', padding: '12px 16px', background: 'var(--accent-red)', color: 'var(--accent-red-text)', borderRadius: '12px', fontSize: '13.5px', fontWeight: 600 }}>
+                {errorMsg}
+              </div>
+            )}
+
+            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '18px', marginTop: '20px' }}>
+              {/* Full Name */}
+              <div className="form-group">
+                <label className="form-label">Full Name *</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  value={name} 
+                  onChange={(e) => setName(e.target.value)} 
+                  placeholder="e.g. Ayushman Sharma" 
+                  required 
+                  disabled={saving}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+                {/* Email (Read-only) */}
+                <div className="form-group">
+                  <label className="form-label">Email Address (Registered)</label>
+                  <input 
+                    type="email" 
+                    className="form-input" 
+                    value={user?.email || ''} 
+                    disabled 
+                    style={{ background: '#F1F5F2', cursor: 'not-allowed' }}
+                  />
+                </div>
+
+                {/* Phone */}
+                <div className="form-group">
+                  <label className="form-label">Contact Phone</label>
+                  <input 
+                    type="tel" 
+                    className="form-input" 
+                    value={phone} 
+                    onChange={(e) => setPhone(e.target.value)} 
+                    placeholder="e.g. +91 98765 43210" 
+                    disabled={saving}
+                  />
+                </div>
+              </div>
+
+              {/* Gender Preference */}
+              <div className="form-group">
+                <label className="form-label">Gender (Used for avatar representation when no custom photo is uploaded) *</label>
+                <div style={{ display: 'flex', gap: '20px', background: '#F8FAF8', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--border-color)', flexWrap: 'wrap' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer' }}>
+                    <input 
+                      type="radio" 
+                      name="profileGender" 
+                      value="MALE" 
+                      checked={gender === 'MALE'}
+                      onChange={(e) => setGender(e.target.value)}
+                      disabled={saving}
+                    />
+                    <span>Male</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer' }}>
+                    <input 
+                      type="radio" 
+                      name="profileGender" 
+                      value="FEMALE" 
+                      checked={gender === 'FEMALE'}
+                      onChange={(e) => setGender(e.target.value)}
+                      disabled={saving}
+                    />
+                    <span>Female</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer' }}>
+                    <input 
+                      type="radio" 
+                      name="profileGender" 
+                      value="PREFER_NOT_TO_SAY" 
+                      checked={gender === 'PREFER_NOT_TO_SAY'}
+                      onChange={(e) => setGender(e.target.value)}
+                      disabled={saving}
+                    />
+                    <span>Prefer not to say</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Address */}
+              <div className="form-group">
+                <label className="form-label">Residential Address / City</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  value={address} 
+                  onChange={(e) => setAddress(e.target.value)} 
+                  placeholder="e.g. Sector 15, Noida, Uttar Pradesh" 
+                  disabled={saving}
+                />
+              </div>
+
+              {/* Bio */}
+              <div className="form-group">
+                <label className="form-label">Bio / About Me</label>
+                <textarea 
+                  className="form-textarea" 
+                  rows={3}
+                  value={bio} 
+                  onChange={(e) => setBio(e.target.value)} 
+                  placeholder="Tell other animal lovers and rescuers about yourself..."
+                  disabled={saving}
+                />
+              </div>
+
+              <div className="form-actions" style={{ justifyContent: 'space-between', marginTop: '12px', flexWrap: 'wrap', gap: '10px' }}>
                 <button 
                   type="button" 
-                  onClick={handleRemovePhoto}
-                  style={{ padding: '6px 12px', fontSize: '12px', borderRadius: '10px', background: '#FEE2E2', color: '#DC2626', border: 'none', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+                  className="btn-secondary"
+                  onClick={() => { logout(); navigate('/welcome'); }}
+                  style={{ color: 'var(--accent-red-text)', display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  <Trash2 size={14} />
-                  <span>Remove Custom Photo</span>
+                  <LogOut size={16} />
+                  <span>Sign Out</span>
                 </button>
-              )}
-            </div>
-          </div>
-        </div>
 
-        {savedSuccess && (
-          <div style={{ marginTop: '18px', padding: '12px 16px', background: '#DCFCE7', color: '#16A34A', borderRadius: '12px', fontSize: '13.5px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <CheckCircle2 size={18} />
-            <span>Profile successfully updated and saved in MySQL database!</span>
-          </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={handleCancelEditing}
+                    disabled={saving}
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <Undo2 size={16} />
+                    <span>Cancel Editing</span>
+                  </button>
+
+                  <button 
+                    type="submit" 
+                    className="btn-primary" 
+                    disabled={saving} 
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', fontSize: '14px', fontWeight: 700 }}
+                  >
+                    {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                    <span>{saving ? 'Saving...' : 'Save Profile'}</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </>
         )}
-
-        {errorMsg && (
-          <div style={{ marginTop: '18px', padding: '12px 16px', background: 'var(--accent-red)', color: 'var(--accent-red-text)', borderRadius: '12px', fontSize: '13.5px', fontWeight: 600 }}>
-            {errorMsg}
-          </div>
-        )}
-
-        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '18px', marginTop: '20px' }}>
-          {/* Full Name */}
-          <div className="form-group">
-            <label className="form-label">Full Name *</label>
-            <input 
-              type="text" 
-              className="form-input" 
-              value={name} 
-              onChange={(e) => setName(e.target.value)} 
-              placeholder="e.g. Ayushman Sharma" 
-              required 
-            />
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
-            {/* Email (Read-only) */}
-            <div className="form-group">
-              <label className="form-label">Email Address (Registered)</label>
-              <input 
-                type="email" 
-                className="form-input" 
-                value={user?.email || ''} 
-                disabled 
-                style={{ background: '#F1F5F2', cursor: 'not-allowed' }}
-              />
-            </div>
-
-            {/* Phone */}
-            <div className="form-group">
-              <label className="form-label">Contact Phone</label>
-              <input 
-                type="tel" 
-                className="form-input" 
-                value={phone} 
-                onChange={(e) => setPhone(e.target.value)} 
-                placeholder="e.g. +91 98765 43210" 
-              />
-            </div>
-          </div>
-
-          {/* Gender Requirement 2 */}
-          <div className="form-group">
-            <label className="form-label">Gender (Used for profile representation when no photo is uploaded) *</label>
-            <div style={{ display: 'flex', gap: '20px', background: '#F8FAF8', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--border-color)', flexWrap: 'wrap' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer' }}>
-                <input 
-                  type="radio" 
-                  name="profileGender" 
-                  value="MALE" 
-                  checked={gender === 'MALE'}
-                  onChange={(e) => setGender(e.target.value)}
-                />
-                <span>Male</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer' }}>
-                <input 
-                  type="radio" 
-                  name="profileGender" 
-                  value="FEMALE" 
-                  checked={gender === 'FEMALE'}
-                  onChange={(e) => setGender(e.target.value)}
-                />
-                <span>Female</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer' }}>
-                <input 
-                  type="radio" 
-                  name="profileGender" 
-                  value="PREFER_NOT_TO_SAY" 
-                  checked={gender === 'PREFER_NOT_TO_SAY'}
-                  onChange={(e) => setGender(e.target.value)}
-                />
-                <span>Prefer not to say</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Address */}
-          <div className="form-group">
-            <label className="form-label">Residential Address / City</label>
-            <input 
-              type="text" 
-              className="form-input" 
-              value={address} 
-              onChange={(e) => setAddress(e.target.value)} 
-              placeholder="e.g. Sector 15, Noida, Uttar Pradesh" 
-            />
-          </div>
-
-          {/* Bio */}
-          <div className="form-group">
-            <label className="form-label">Bio / About Me</label>
-            <textarea 
-              className="form-textarea" 
-              rows={3}
-              value={bio} 
-              onChange={(e) => setBio(e.target.value)} 
-              placeholder="Tell other animal lovers and rescuers about yourself..."
-            />
-          </div>
-
-          <div className="form-actions" style={{ justifyContent: 'space-between', marginTop: '12px' }}>
-            <button 
-              type="button" 
-              className="btn-secondary"
-              onClick={() => { logout(); navigate('/welcome'); }}
-              style={{ color: 'var(--accent-red-text)', display: 'flex', alignItems: 'center', gap: '6px' }}
-            >
-              <LogOut size={16} />
-              <span>Sign Out</span>
-            </button>
-
-            <button 
-              type="submit" 
-              className="btn-primary" 
-              disabled={saving} 
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', fontSize: '14px', fontWeight: 700 }}
-            >
-              {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-              <span>{saving ? 'Saving...' : 'Save Profile'}</span>
-            </button>
-          </div>
-        </form>
       </div>
     </div>
   );

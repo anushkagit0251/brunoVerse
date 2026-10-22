@@ -19,7 +19,9 @@ public class CommunityPost {
     @Column(length = 2000)
     private String description;
     
+    @Column(name = "photo_url", columnDefinition = "TEXT")
     private String photoUrl;
+    @Column(name = "video_url", columnDefinition = "TEXT")
     private String videoUrl;
     
     private String authorName;

@@ -1,5 +1,6 @@
 package com.brunoverse.controller;
 
+import com.brunoverse.config.JwtUtil;
 import com.brunoverse.entity.User;
 import com.brunoverse.repository.UserRepository;
 import org.springframework.http.HttpStatus;
@@ -13,9 +14,11 @@ import java.util.List;
 public class UserController {
 
     private final UserRepository userRepository;
+    private final JwtUtil jwtUtil;
 
-    public UserController(UserRepository userRepository) {
+    public UserController(UserRepository userRepository, JwtUtil jwtUtil) {
         this.userRepository = userRepository;
+        this.jwtUtil = jwtUtil;
     }
 
     @GetMapping
@@ -30,7 +33,17 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public User updateUser(@PathVariable Long id, @RequestBody User updated) {
+    public User updateUser(@PathVariable Long id, 
+                           @RequestBody User updated,
+                           @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            Long tokenUserId = jwtUtil.extractUserId(token);
+            if (tokenUserId != null && !tokenUserId.equals(id)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not authorized to update another user's profile");
+            }
+        }
+
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         if (updated.getName() != null && !updated.getName().isBlank()) user.setName(updated.getName());

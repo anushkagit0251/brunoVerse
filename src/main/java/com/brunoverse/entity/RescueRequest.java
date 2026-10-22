@@ -17,8 +17,10 @@ public class RescueRequest {
     private String animalType;
     private String description;
     private String location;
+    @Column(name = "photo_url", columnDefinition = "TEXT")
     private String photoUrl;
 
+    @Column(name = "animal_condition")
     private String condition;
     private String phone;
     private Double latitude;

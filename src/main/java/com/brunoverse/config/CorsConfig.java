@@ -20,7 +20,7 @@ public class CorsConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOriginPatterns("http://localhost:*", "http://127.0.0.1:*", "https://*.vercel.app", "*")
+                .allowedOriginPatterns("http://localhost:*", "http://127.0.0.1:*", "https://*.railway.app", "https://*.up.railway.app", "https://*.vercel.app", "*")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH")
                 .allowedHeaders("*")
                 .exposedHeaders("Authorization", "Content-Disposition")
@@ -30,7 +30,10 @@ public class CorsConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        String uploadDir = System.getProperty("user.dir") + "/uploads/";
+        String envDir = System.getenv("UPLOAD_DIR");
+        String uploadDir = (envDir != null && !envDir.isBlank())
+                ? (envDir.endsWith("/") ? envDir : envDir + "/")
+                : System.getProperty("user.dir") + "/uploads/";
         File dir = new File(uploadDir);
         if (!dir.exists()) {
             dir.mkdirs();
@@ -47,6 +50,8 @@ public class CorsConfig implements WebMvcConfigurer {
         config.setAllowedOriginPatterns(Arrays.asList(
                 "http://localhost:*",
                 "http://127.0.0.1:*",
+                "https://*.railway.app",
+                "https://*.up.railway.app",
                 "https://*.vercel.app",
                 "*"
         ));

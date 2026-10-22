@@ -1,27 +1,41 @@
 import React, { useState, useRef } from 'react';
-import { X, PawPrint, Loader2, Camera, Upload, Trash2 } from 'lucide-react';
+import { X, PawPrint, Loader2, Camera, Upload, Trash2, CheckCircle2 } from 'lucide-react';
 import { animalApi } from '../../api/animalApi';
 import { uploadApi } from '../../api/uploadApi';
 import { useAuth } from '../../context/AuthContext';
+import { getAssetUrl } from '../../utils/url';
+import { parseApiError } from '../../utils/errorHandler';
 
 export default function AddPetModal({ isOpen, onClose, onPetAdded }) {
   const { user } = useAuth();
   const fileInputRef = useRef(null);
 
-  const [formData, setFormData] = useState({
+  const initialForm = {
     name: '',
     type: 'DOG',
     breed: '',
     age: '',
     gender: 'Male',
-  });
+  };
 
+  const [formData, setFormData] = useState(initialForm);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
   if (!isOpen) return null;
+
+  const handleResetAndClose = () => {
+    setFormData(initialForm);
+    setImageFile(null);
+    setImagePreview(null);
+    setError('');
+    setSuccessMsg('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    onClose();
+  };
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
@@ -49,32 +63,55 @@ export default function AddPetModal({ isOpen, onClose, onPetAdded }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name.trim()) {
-      setError('Please enter pet name');
+      setError('Please enter pet companion name');
+      return;
+    }
+
+    // Determine owner ID from auth state or persisted session
+    let effectiveOwnerId = user?.userId || user?.id;
+    if (!effectiveOwnerId) {
+      try {
+        const stored = localStorage.getItem('brunoverse_user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          effectiveOwnerId = parsed.userId || parsed.id;
+        }
+      } catch (ignored) {}
+    }
+
+    if (!effectiveOwnerId) {
+      setError('Please sign in or select an account to register a pet companion.');
       return;
     }
 
     setLoading(true);
     setError('');
+    setSuccessMsg('');
 
     try {
       let finalPhotoUrl = null;
 
-      // Upload image to backend
+      // 1. Upload photo to backend if selected
       if (imageFile) {
         try {
           const uploadRes = await uploadApi.uploadFile(imageFile);
-          finalPhotoUrl = uploadRes.url.startsWith('http')
-            ? uploadRes.url
-            : `${window.location.origin.includes('localhost') ? 'http://localhost:8080' : ''}${uploadRes.url}`;
+          finalPhotoUrl = getAssetUrl(uploadRes.url);
         } catch (uploadErr) {
           console.warn('Backend image upload fallback to preview data URL:', uploadErr);
-          finalPhotoUrl = imagePreview;
+          // If server rejects upload, fallback to high-quality default or preview
+          finalPhotoUrl = formData.type === 'CAT'
+            ? 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=400&q=80'
+            : 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=400&q=80';
         }
       }
 
       if (!finalPhotoUrl) {
         finalPhotoUrl = formData.type === 'CAT'
           ? 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=400&q=80'
+          : formData.type === 'BIRD'
+          ? 'https://images.unsplash.com/photo-1522858547137-f1dcec554f55?auto=format&fit=crop&w=400&q=80'
+          : formData.type === 'COW'
+          ? 'https://images.unsplash.com/photo-1546445317-29f4545e9d53?auto=format&fit=crop&w=400&q=80'
           : 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=400&q=80';
       }
 
@@ -82,24 +119,33 @@ export default function AddPetModal({ isOpen, onClose, onPetAdded }) {
         name: formData.name.trim(),
         type: formData.type,
         breed: formData.breed.trim() || 'Mixed Breed',
-        age: parseInt(formData.age) || 1,
+        age: parseInt(formData.age, 10) || 1,
         gender: formData.gender,
         photoUrl: finalPhotoUrl
       };
 
-      await animalApi.createAnimal(payload, user.userId);
-      onPetAdded();
-      onClose();
+      await animalApi.createAnimal(payload, effectiveOwnerId);
+
+      setSuccessMsg('Pet companion saved successfully! Updating records...');
+      if (onPetAdded) {
+        onPetAdded();
+      }
+
+      setTimeout(() => {
+        handleResetAndClose();
+      }, 1200);
+
     } catch (err) {
       console.error('Failed to create pet:', err);
-      setError('Failed to save pet. Please check backend connection.');
+      const msg = parseApiError(err, 'Failed to save pet companion. Please check backend connection.');
+      setError(msg);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={handleResetAndClose}>
       <div className="modal-content" style={{ maxWidth: '520px', borderRadius: '22px' }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -108,8 +154,15 @@ export default function AddPetModal({ isOpen, onClose, onPetAdded }) {
             </div>
             <h2 className="modal-title">Add a Pet Companion</h2>
           </div>
-          <button className="modal-close-btn" onClick={onClose}><X size={18} /></button>
+          <button className="modal-close-btn" onClick={handleResetAndClose}><X size={18} /></button>
         </div>
+
+        {successMsg && (
+          <div style={{ padding: '12px 14px', background: '#DCFCE7', color: '#16A34A', borderRadius: '12px', fontSize: '13.5px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+            <CheckCircle2 size={18} />
+            <span>{successMsg}</span>
+          </div>
+        )}
 
         {error && (
           <div style={{ padding: '10px 14px', background: 'var(--accent-red)', color: 'var(--accent-red-text)', borderRadius: '10px', fontSize: '13px', fontWeight: 600, marginBottom: '14px' }}>
@@ -145,7 +198,7 @@ export default function AddPetModal({ isOpen, onClose, onPetAdded }) {
                   }}
                 >
                   <Trash2 size={12} />
-                  <span>Remove</span>
+                  <span>Remove Photo</span>
                 </button>
               </div>
             ) : (
@@ -183,6 +236,7 @@ export default function AddPetModal({ isOpen, onClose, onPetAdded }) {
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required
+              disabled={loading}
             />
           </div>
 
@@ -193,6 +247,7 @@ export default function AddPetModal({ isOpen, onClose, onPetAdded }) {
                 className="form-select" 
                 value={formData.type}
                 onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                disabled={loading}
               >
                 <option value="DOG">Dog</option>
                 <option value="CAT">Cat</option>
@@ -208,6 +263,7 @@ export default function AddPetModal({ isOpen, onClose, onPetAdded }) {
                 className="form-select" 
                 value={formData.gender}
                 onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                disabled={loading}
               >
                 <option value="Male">Male ♂</option>
                 <option value="Female">Female ♀</option>
@@ -224,7 +280,9 @@ export default function AddPetModal({ isOpen, onClose, onPetAdded }) {
                 placeholder="e.g. Golden Retriever" 
                 value={formData.breed}
                 onChange={(e) => setFormData({ ...formData, breed: e.target.value })}
-              />
+                disabled={loading}
+              >
+              </input>
             </div>
 
             <div className="form-group">
@@ -237,17 +295,18 @@ export default function AddPetModal({ isOpen, onClose, onPetAdded }) {
                 placeholder="e.g. 3" 
                 value={formData.age}
                 onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                disabled={loading}
               />
             </div>
           </div>
 
           <div className="form-actions" style={{ marginTop: '8px' }}>
-            <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>
+            <button type="button" className="btn-secondary" onClick={handleResetAndClose} disabled={loading}>
               Cancel
             </button>
             <button type="submit" className="btn-primary" disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               {loading && <Loader2 size={16} className="animate-spin" />}
-              <span>Save Pet Companion</span>
+              <span>{loading ? 'Saving Pet...' : 'Save Pet Companion'}</span>
             </button>
           </div>
         </form>

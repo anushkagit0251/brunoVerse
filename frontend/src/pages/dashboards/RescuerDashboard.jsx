@@ -105,25 +105,35 @@ export default function RescuerDashboard() {
 
   return (
     <div className="dashboard-content-layout">
-      {/* 1. Hero Card matching IMAGE 2 (RIGHT) */}
+      {/* 1. Hero Card matching Reference (Right) */}
       <section className="hero-banner-card">
         <div className="hero-banner-inner">
-          <div className="hero-art-wrapper">
-            <RescuerHeroArt />
+          <div className="hero-photo-wrapper">
+            <img 
+              src="/assets/hero-rescuer.jpg" 
+              alt="Rescuer caring for street dog"
+              className="hero-animal-photo"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex';
+              }}
+            />
+            <div className="hero-fallback-art" style={{ display: 'none', width: '100%', height: '100%' }}>
+              <RescuerHeroArt />
+            </div>
           </div>
           
           <div className="hero-greeting-text">
             <h1 className="hero-title">Good morning, {getFirstName()}!</h1>
-            <p className="hero-subtitle">
-              Together we can save more lives <span className="heart-pink">♥</span>
-            </p>
+            <p className="hero-subtitle">Together we can save more lives <span className="heart-pink">♥</span></p>
+            <p className="hero-description">Real-time alerts, quick response coordination, and medical help.</p>
           </div>
 
           <div className="hero-handwritten-note">
             <p className="note-line-1">Every</p>
             <p className="note-line-2">life matters</p>
             <div style={{ display: 'flex', justifyContent: 'center', marginTop: '4px' }}>
-              <PawPrint size={18} fill="#2d6a4f" color="#2d6a4f" />
+              <PawPrint size={18} fill="#214E3D" color="#214E3D" />
             </div>
           </div>
         </div>

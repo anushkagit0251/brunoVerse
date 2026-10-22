@@ -3,6 +3,7 @@ import { X, Trash2, Calendar, Stethoscope, CheckCircle, Plus, Camera, Upload, Lo
 import { medicalApi } from '../../api/medicalApi';
 import { animalApi } from '../../api/animalApi';
 import { uploadApi } from '../../api/uploadApi';
+import { getAssetUrl } from '../../utils/url';
 
 export default function PetDetailModal({ pet, isOpen, onClose, onPetDeleted, onPetUpdated }) {
   const [currentPet, setCurrentPet] = useState(pet);
@@ -72,9 +73,7 @@ export default function PetDetailModal({ pet, isOpen, onClose, onPetDeleted, onP
     setUploadingPhoto(true);
     try {
       const uploadRes = await uploadApi.uploadFile(file);
-      const photoUrl = uploadRes.url.startsWith('http')
-        ? uploadRes.url
-        : `${window.location.origin.includes('localhost') ? 'http://localhost:8080' : ''}${uploadRes.url}`;
+      const photoUrl = getAssetUrl(uploadRes.url);
 
       const updated = await animalApi.updateAnimal(currentPet.id, { photoUrl });
       setCurrentPet(prev => ({ ...prev, photoUrl }));

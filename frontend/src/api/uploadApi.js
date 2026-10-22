@@ -6,7 +6,7 @@ export const uploadApi = {
     formData.append('file', file);
     const res = await client.post('/upload', formData, {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        'Content-Type': undefined,
       },
     });
     return res.data;

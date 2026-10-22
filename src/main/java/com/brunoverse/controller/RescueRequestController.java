@@ -20,20 +20,32 @@ public class RescueRequestController {
 
     private final RescueRequestRepository rescueRequestRepository;
     private final UserRepository userRepository;
+    private final com.brunoverse.config.JwtUtil jwtUtil;
 
     public RescueRequestController(RescueRequestRepository rescueRequestRepository,
-                                   UserRepository userRepository) {
+                                   UserRepository userRepository,
+                                   com.brunoverse.config.JwtUtil jwtUtil) {
         this.rescueRequestRepository = rescueRequestRepository;
         this.userRepository = userRepository;
+        this.jwtUtil = jwtUtil;
     }
 
     @PostMapping
     public ResponseEntity<RescueRequest> createRescueRequest(
             @RequestBody RescueRequest request,
-            @RequestParam(required = false) Long reportedById) {
+            @RequestParam(required = false) Long reportedById,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        if (reportedById != null) {
-            User reporter = userRepository.findById(reportedById).orElse(null);
+        Long effectiveReporterId = reportedById;
+        if (effectiveReporterId == null && request.getReportedBy() != null && request.getReportedBy().getId() != null) {
+            effectiveReporterId = request.getReportedBy().getId();
+        }
+        if (effectiveReporterId == null && authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            effectiveReporterId = jwtUtil.extractUserId(token);
+        }
+        if (effectiveReporterId != null) {
+            User reporter = userRepository.findById(effectiveReporterId).orElse(null);
             request.setReportedBy(reporter);
         }
         if (request.getStatus() == null) {

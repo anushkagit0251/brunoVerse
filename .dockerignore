@@ -1,0 +1,29 @@
+# Git
+.git
+.gitignore
+
+# Maven and Java
+target/
+*.class
+*.jar
+*.war
+.mvn/
+*.log
+
+# Frontend (handled by its own Dockerfile)
+frontend/node_modules/
+frontend/dist/
+node_modules/
+dist/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Environment & local files
+.env
+.env.*
+application-local.properties
+uploads/
+tools/

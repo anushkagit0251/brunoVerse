@@ -176,7 +176,7 @@ public class VetPlacesService {
                 .uri(URI.create(url))
                 .header("Content-Type", "application/json")
                 .header("X-Goog-Api-Key", this.apiKey)
-                .header("X-Goog-FieldMask", "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.currentOpeningHours,places.location,places.photos")
+                .header("X-Goog-FieldMask", "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.currentOpeningHours,places.location,places.photos")
                 .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
                 .timeout(Duration.ofSeconds(6))
                 .build();
@@ -199,7 +199,7 @@ public class VetPlacesService {
                 .uri(URI.create(url))
                 .header("Content-Type", "application/json")
                 .header("X-Goog-Api-Key", this.apiKey)
-                .header("X-Goog-FieldMask", "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.currentOpeningHours,places.location,places.photos")
+                .header("X-Goog-FieldMask", "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.currentOpeningHours,places.location,places.photos")
                 .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
                 .timeout(Duration.ofSeconds(6))
                 .build();
@@ -220,9 +220,19 @@ public class VetPlacesService {
             String id = pBlock.substring(0, Math.max(0, pBlock.indexOf("\"")));
 
             String name = extractNestedText(pBlock, "displayName", "text");
-            if (name == null) name = extractStringField(pBlock, "name");
+            if (name == null || name.startsWith("places/")) {
+                String altName = extractStringField(pBlock, "displayName");
+                if (altName != null && !altName.isBlank()) name = altName;
+            }
+            if (name == null || name.startsWith("places/")) {
+                name = "Veterinary Clinic";
+            }
+
             String address = extractStringField(pBlock, "formattedAddress");
             String phone = extractStringField(pBlock, "nationalPhoneNumber");
+            if (phone == null || phone.isBlank()) {
+                phone = extractStringField(pBlock, "internationalPhoneNumber");
+            }
             String website = extractStringField(pBlock, "websiteUri");
             Double rating = extractDoubleField(pBlock, "rating");
             Integer userRatingCount = extractIntField(pBlock, "userRatingCount");
@@ -244,11 +254,11 @@ public class VetPlacesService {
 
             list.add(new VetClinicDto(
                     id,
-                    name != null ? name : "Veterinary Care Clinic",
-                    rating != null ? rating : 4.8,
-                    userRatingCount != null ? userRatingCount : 120,
-                    address != null ? address : "Nearby Veterinary Hospital",
-                    phone != null ? phone : "+91 98765 43210",
+                    name,
+                    rating,
+                    userRatingCount,
+                    address != null ? address : "Nearby Veterinary Clinic",
+                    phone,
                     website,
                     openNow,
                     distStr,
@@ -307,7 +317,7 @@ public class VetPlacesService {
                             4.7,
                             84,
                             address,
-                            phone != null ? phone : "+91 98765 43210",
+                            phone,
                             website,
                             true,
                             distStr,
@@ -358,10 +368,10 @@ public class VetPlacesService {
                     list.add(new VetClinicDto(
                             "nom_" + id,
                             name,
-                            4.8,
-                            95,
+                            null,
+                            null,
                             displayName,
-                            "+91 98765 43210",
+                            null,
                             null,
                             true,
                             String.format(Locale.US, "%.1f km", distKm),
@@ -405,10 +415,10 @@ public class VetPlacesService {
         return new VetClinicDto(
                 String.valueOf(p.getId()),
                 p.getName(),
-                p.getRating() != null ? p.getRating() : 4.8,
+                p.getRating(),
                 142,
                 p.getAddress() != null ? p.getAddress() : "Delhi NCR",
-                p.getPhone() != null ? p.getPhone() : "+91 98765 43210",
+                p.getPhone(),
                 p.getWebsite(),
                 p.getOpenNow() != null ? p.getOpenNow() : true,
                 String.format(Locale.US, "%.1f km", distKm),
@@ -437,9 +447,13 @@ public class VetPlacesService {
     }
 
     private static String extractNestedText(String json, String objKey, String textKey) {
-        Pattern p = Pattern.compile("\"" + Pattern.quote(objKey) + "\"\\s*:\\s*\\{[^}]*\"" + Pattern.quote(textKey) + "\"\\s*:\\s*\"([^\"]+)\"");
+        Pattern p = Pattern.compile("\"" + Pattern.quote(objKey) + "\"\\s*:\\s*\\{[^}]*?\"" + Pattern.quote(textKey) + "\"\\s*:\\s*\"([^\"]+)\"", Pattern.DOTALL);
         Matcher m = p.matcher(json);
-        return m.find() ? m.group(1) : null;
+        if (m.find()) return m.group(1);
+        // Fallback for flat or alternative format
+        Pattern p2 = Pattern.compile("\"" + Pattern.quote(objKey) + "\"\\s*:\\s*\"([^\"]+)\"");
+        Matcher m2 = p2.matcher(json);
+        return m2.find() ? m2.group(1) : null;
     }
 
     private static Double extractDoubleField(String json, String key) {

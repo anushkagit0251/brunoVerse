@@ -7,6 +7,7 @@ import { communityApi } from '../api/communityApi';
 import { uploadApi } from '../api/uploadApi';
 import { useAuth } from '../context/AuthContext';
 import { getUserAvatar } from '../utils/avatar';
+import { getAssetUrl } from '../utils/url';
 
 export default function CommunityPage() {
   const { user } = useAuth();
@@ -114,9 +115,7 @@ export default function CommunityPage() {
         setUploadingMedia(true);
         try {
           const uploadRes = await uploadApi.uploadFile(selectedFile);
-          const fullUrl = uploadRes.url.startsWith('http')
-            ? uploadRes.url
-            : `${window.location.origin.includes('localhost') ? 'http://localhost:8080' : ''}${uploadRes.url}`;
+          const fullUrl = getAssetUrl(uploadRes.url);
 
           if (selectedFile.type.startsWith('video/')) {
             finalVideoUrl = fullUrl;

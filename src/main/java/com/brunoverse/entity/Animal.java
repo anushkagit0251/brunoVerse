@@ -21,6 +21,7 @@ public class Animal {
     private String breed;
     private Integer age;
     private String gender;
+    @Column(name = "photo_url", columnDefinition = "TEXT")
     private String photoUrl;
 
     @ManyToOne

@@ -33,9 +33,13 @@ export default function CallHelpModal({ provider, isOpen, onClose }) {
             <Phone size={18} color="var(--primary)" />
             <div>
               <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 700 }}>DIRECT CONTACT</div>
-              <a href={`tel:${provider.phone}`} style={{ fontSize: '15px', fontWeight: 800, color: 'var(--primary)' }}>
-                {provider.phone || '+91 98765 43210'}
-              </a>
+              {provider.phone ? (
+                <a href={`tel:${provider.phone}`} style={{ fontSize: '15px', fontWeight: 800, color: 'var(--primary)' }}>
+                  {provider.phone}
+                </a>
+              ) : (
+                <span style={{ fontSize: '14px', color: 'var(--text-muted)', fontWeight: 600 }}>Phone not listed</span>
+              )}
             </div>
           </div>
         </div>
@@ -52,14 +56,26 @@ export default function CallHelpModal({ provider, isOpen, onClose }) {
             <span>Open in Google Maps</span>
           </a>
 
-          <a 
-            href={`tel:${provider.phone || '+919876543210'}`}
-            className="btn-primary"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-          >
-            <Phone size={15} />
-            <span>Call Now</span>
-          </a>
+          {provider.phone ? (
+            <a 
+              href={`tel:${provider.phone}`}
+              className="btn-primary"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <Phone size={15} />
+              <span>Call Now</span>
+            </a>
+          ) : (
+            <button 
+              type="button"
+              disabled
+              className="btn-secondary"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.6, cursor: 'not-allowed' }}
+            >
+              <Phone size={15} />
+              <span>No Direct Line</span>
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -163,6 +163,7 @@ VITE_GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 
 ### 3. Backend Setup & Run
 
+
 1. Open a terminal in the root folder:
    ```bash
    mvn clean spring-boot:run
@@ -212,31 +213,89 @@ To enable Google Sign-In:
 
 ---
 
-## 🌐 Production Deployment
+## 🚂 Railway Production Deployment Guide
 
-### Frontend (Vercel)
-1. Push this repository to GitHub.
-2. Import the project into [Vercel](https://vercel.com).
-3. Set the **Root Directory** to `frontend`.
-4. Configure Environment Variables in Vercel:
-   - `VITE_API_BASE_URL`: `https://your-backend-api.onrender.com`
-   - `VITE_GOOGLE_CLIENT_ID`: Your Google OAuth Client ID
-5. Deploy.
+BrunoVerse is fully configured for deployment on [Railway](https://railway.app) using a single GitHub repository hosting three interconnected services:
 
-### Backend (Render / Railway / AWS / VPS)
-1. Set the following environment variables:
-   - `DATABASE_URL`: `jdbc:mysql://<db-host>:<port>/brunoverse`
-   - `DATABASE_USERNAME`: Your DB user
-   - `DATABASE_PASSWORD`: Your DB password
-   - `JWT_SECRET`: 32+ character random secret
-   - `GOOGLE_CLIENT_ID`: Your Google OAuth Client ID
-   - `GOOGLE_CLIENT_SECRET`: Your Google OAuth Client Secret
-   - `GOOGLE_MAPS_API_KEY`: Your Google Maps API Key (optional)
-2. Build and run:
-   ```bash
-   mvn clean package -DskipTests
-   java -jar target/brunoverse-0.0.1-SNAPSHOT.jar
+```
+┌────────────────────────┐      ┌────────────────────────┐      ┌────────────────────────┐
+│    Frontend Service    │ ───> │    Backend Service     │ ───> │  MariaDB Service (DB)  │
+│  (React 19 + Nginx)    │ HTTP │ (Spring Boot 4 / Java) │ JDBC │  (Persistent Storage)  │
+└────────────────────────┘      └────────────────────────┘      └────────────────────────┘
+                                            │
+                                            v (Persistent Volume: /uploads)
+                                ┌────────────────────────┐
+                                │   Uploaded Media Disk  │
+                                └────────────────────────┘
+```
+
+---
+
+### Step 1: Provision the MariaDB Database
+1. In your [Railway Dashboard](https://railway.app/dashboard), create a **New Project**.
+2. Click **+ New** → **Database** → **Add MySQL** (or **MariaDB** template).
+3. Once provisioned, note the private connection variables:
+   - `MYSQLDATABASE` / `MYSQL_DATABASE`
+   - `MYSQLUSER` / `MYSQL_USER`
+   - `MYSQLPASSWORD` / `MYSQL_PASSWORD`
+   - `MYSQLHOST` / `MYSQL_HOST`
+   - `MYSQLPORT` / `MYSQL_PORT`
+4. The JDBC connection URL format is:
    ```
+   jdbc:mysql://${{MySQL.MYSQLHOST}}:${{MySQL.MYSQLPORT}}/${{MySQL.MYSQLDATABASE}}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+   ```
+
+---
+
+### Step 2: Deploy the Backend Service
+1. In the same Railway project, click **+ New** → **GitHub Repo** → select your `brunoVerse` repository.
+2. In the service **Settings**:
+   - **Root Directory:** `/` (leave as root)
+   - **Build:** Railway detects `Dockerfile` automatically (multi-stage Maven + Temurin JRE 21).
+   - **Healthcheck Path:** `/api/health`
+3. In **Variables**, add:
+   | Variable | Value |
+   |---|---|
+   | `PORT` | `8080` |
+   | `DATABASE_URL` | `jdbc:mysql://${{MySQL.MYSQLHOST}}:${{MySQL.MYSQLPORT}}/${{MySQL.MYSQLDATABASE}}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true` |
+   | `DATABASE_USERNAME` | `${{MySQL.MYSQLUSER}}` |
+   | `DATABASE_PASSWORD` | `${{MySQL.MYSQLPASSWORD}}` |
+   | `JWT_SECRET` | A secure random 32+ character key |
+   | `UPLOAD_DIR` | `/uploads` |
+   | `GEMINI_API_KEY` | Your Google Gemini Vision API key |
+   | `GEMINI_MODEL` | `gemini-2.5-flash` |
+   | `GOOGLE_CLIENT_ID` | Your Google OAuth 2.0 Web Client ID |
+   | `GOOGLE_CLIENT_SECRET` | Your Google OAuth 2.0 Client Secret |
+   | `GOOGLE_REDIRECT_URI` | `https://<YOUR-FRONTEND-DOMAIN>/auth/google/callback` |
+4. In **Volumes**:
+   - Add a persistent volume mounted at `/uploads` so uploaded pet and rescue photos survive container restarts.
+5. In **Networking**:
+   - Click **Generate Domain** (e.g. `https://brunoverse-backend-production.up.railway.app`).
+
+---
+
+### Step 3: Deploy the Frontend Service
+1. Click **+ New** → **GitHub Repo** → select the same `brunoVerse` repository.
+2. In the service **Settings**:
+   - **Service Name:** `brunoverse-frontend`
+   - **Root Directory:** `frontend`
+   - **Build:** Railway detects `frontend/Dockerfile` (Node 20 build + Nginx with SPA fallback).
+3. In **Variables**:
+   | Variable | Value |
+   |---|---|
+   | `VITE_API_BASE_URL` | `https://<YOUR-BACKEND-DOMAIN>` (e.g. `https://brunoverse-backend-production.up.railway.app`) |
+   | `VITE_GOOGLE_CLIENT_ID` | Your Google OAuth Client ID |
+4. In **Networking**:
+   - Click **Generate Domain** (e.g. `https://brunoverse.up.railway.app`).
+
+---
+
+### Step 4: Finalize Google Cloud OAuth Credentials
+In [Google Cloud Console](https://console.cloud.google.com/apis/credentials):
+- **Authorized JavaScript origins:**
+  - `https://<YOUR-FRONTEND-DOMAIN>` (e.g., `https://brunoverse.up.railway.app`)
+- **Authorized redirect URIs:**
+  - `https://<YOUR-FRONTEND-DOMAIN>/auth/google/callback`
 
 ---
 

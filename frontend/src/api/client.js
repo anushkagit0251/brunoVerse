@@ -1,7 +1,19 @@
 import axios from 'axios';
 
-const rawBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-const API_BASE_URL = rawBase.endsWith('/api') ? rawBase : `${rawBase.replace(/\/+$/, '')}/api`;
+let rawBase = import.meta.env.VITE_API_BASE_URL;
+if (!rawBase) {
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    rawBase = 'http://localhost:8080';
+  } else {
+    rawBase = '';
+  }
+}
+
+const API_BASE_URL = !rawBase 
+  ? '/api' 
+  : rawBase.endsWith('/api') 
+    ? rawBase 
+    : `${rawBase.replace(/\/+$/, '')}/api`;
 
 const client = axios.create({
   baseURL: API_BASE_URL,

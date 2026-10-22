@@ -93,4 +93,23 @@ public class JwtUtil {
         if (s == null) return "";
         return s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
+
+    public Long extractUserId(String token) {
+        try {
+            String[] parts = token.split("\\.");
+            if (parts.length < 2) return null;
+            byte[] payloadBytes = Base64.getUrlDecoder().decode(parts[1]);
+            String payload = new String(payloadBytes, StandardCharsets.UTF_8);
+
+            Pattern pattern = Pattern.compile("\"userId\":\\s*(\\d+)");
+            Matcher m = pattern.matcher(payload);
+            if (m.find()) {
+                return Long.parseLong(m.group(1));
+            }
+            return null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
 }
+

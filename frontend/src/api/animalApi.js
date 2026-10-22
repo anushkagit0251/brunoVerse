@@ -17,7 +17,8 @@ export const animalApi = {
   },
 
   createAnimal: async (animalData, ownerId) => {
-    const res = await client.post(`/animals?ownerId=${ownerId}`, animalData);
+    const query = (ownerId && ownerId !== 'undefined') ? `?ownerId=${ownerId}` : '';
+    const res = await client.post(`/animals${query}`, animalData);
     return res.data;
   },
 

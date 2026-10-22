@@ -13,6 +13,17 @@ export default function LearningPage() {
   const [bookmarkedIds, setBookmarkedIds] = useState([]);
   const [copiedId, setCopiedId] = useState(null);
 
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const topicId = params.get('topic');
+    if (topicId) {
+      const found = LEARNING_TOPICS.find(t => t.id === topicId);
+      if (found) {
+        setSelectedTopic(found);
+      }
+    }
+  }, []);
+
   const toggleBookmark = (id) => {
     setBookmarkedIds(prev => 
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]

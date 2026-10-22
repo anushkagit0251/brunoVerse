@@ -5,7 +5,6 @@ import {
   MapPin, 
   Stethoscope, 
   FileText, 
-  Plus, 
   ArrowRight, 
   Sparkles, 
   Syringe, 
@@ -13,8 +12,9 @@ import {
   Calendar,
   Compass,
   PawPrint,
-  Clock,
-  Heart
+  Utensils,
+  Activity,
+  Moon
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { animalApi } from '../../api/animalApi';
@@ -38,7 +38,7 @@ export default function PetOwnerDashboard() {
   const [reminders, setReminders] = useState([]);
   const [providers, setProviders] = useState([]);
   const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 
   // Modals
   const [showAddPet, setShowAddPet] = useState(false);
@@ -46,10 +46,6 @@ export default function PetOwnerDashboard() {
   const [showReport, setShowReport] = useState(false);
   const [showAi, setShowAi] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState(null);
-
-  useEffect(() => {
-    loadDashboardData();
-  }, [user]);
 
   const loadDashboardData = async () => {
     if (!user?.userId) return;
@@ -73,6 +69,10 @@ export default function PetOwnerDashboard() {
     }
   };
 
+  useEffect(() => {
+    loadDashboardData();
+  }, [user]);
+
   const getFirstName = () => {
     if (!user?.name) return 'Friend';
     return user.name.split(' ')[0];
@@ -90,18 +90,36 @@ export default function PetOwnerDashboard() {
 
   return (
     <div className="dashboard-content-layout">
-      {/* 1. Hero Card matching IMAGE 2 (LEFT) */}
+      {/* 1. Hero Card matching Reference */}
       <section className="hero-banner-card">
         <div className="hero-banner-inner">
-          <div className="hero-art-wrapper">
-            <PetOwnerHeroArt />
+          <div className="hero-photo-wrapper">
+            <img 
+              src="/assets/hero-pet-owner.jpg" 
+              alt="Happy dog and cat together"
+              className="hero-animal-photo"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex';
+              }}
+            />
+            <div className="hero-fallback-art" style={{ display: 'none', width: '100%', height: '100%' }}>
+              <PetOwnerHeroArt />
+            </div>
           </div>
           
           <div className="hero-greeting-text">
-            <h1 className="hero-title">Good morning, {user?.name || 'Friend'}!</h1>
-            <p className="hero-subtitle">
-              Your little companions make the world brighter <span className="heart-pink">♥</span>
-            </p>
+            <h1 className="hero-title">Good morning, {getFirstName()}!</h1>
+            <p className="hero-subtitle">A little more love for every paw.</p>
+            <p className="hero-description">Care, comfort and a happier life for your little companions.</p>
+            <button 
+              type="button" 
+              className="hero-explore-btn"
+              onClick={() => navigate('/learning')}
+            >
+              <span>Explore pet care</span>
+              <ArrowRight size={14} />
+            </button>
           </div>
 
           <div className="hero-handwritten-note">
@@ -149,47 +167,73 @@ export default function PetOwnerDashboard() {
         {/* Left: My Pets Section */}
         <section className="section-panel pets-panel">
           <div className="section-panel-header">
-            <h2 className="section-panel-title">My Pets</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <PawPrint size={18} color="var(--primary)" />
+              <h2 className="section-panel-title">My Pets</h2>
+            </div>
             <span className="section-view-all" onClick={() => navigate('/pets')}>
               View All <ArrowRight size={13} />
             </span>
           </div>
 
           <div className="pets-row-container">
-            {pets.map((pet) => (
-              <div 
-                key={pet.id} 
-                className="pet-item-card"
-                onClick={() => setSelectedPet(pet)}
-              >
-                <div className="pet-avatar-wrapper">
-                  <img 
-                    src={pet.photoUrl || (pet.type === 'CAT' 
-                      ? 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=300&q=80'
-                      : 'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=300&q=80')} 
-                    alt={pet.name} 
-                    className="pet-avatar-img"
-                  />
-                </div>
-                <div className="pet-header-line">
-                  <span className="pet-card-name">{pet.name}</span>
-                  <span className="pet-gender-sym">{pet.gender === 'Female' ? '♀' : '♂'}</span>
-                </div>
-                <div className="pet-meta-line">
-                  {pet.type === 'DOG' ? 'Dog' : pet.type === 'CAT' ? 'Cat' : pet.type} • {pet.age} {pet.age === 1 ? 'year' : 'years'}
-                </div>
-                <div className="pet-badge-wrapper">
-                  <span className="badge-pill badge-healthy">
-                    ✓ Healthy
-                  </span>
-                </div>
+            {pets.length === 0 ? (
+              <div className="empty-pets-box">
+                <PawPrint size={32} color="var(--text-muted)" />
+                <p className="empty-pets-text">Your first furry friend belongs here.</p>
+                <button type="button" className="btn-primary-sm" onClick={() => setShowAddPet(true)}>
+                  Add your first pet
+                </button>
               </div>
-            ))}
+            ) : (
+              pets.map((pet) => (
+                <div 
+                  key={pet.id} 
+                  className="pet-item-card"
+                  onClick={() => setSelectedPet(pet)}
+                >
+                  <div className="pet-avatar-wrapper">
+                    <img 
+                      src={pet.photoUrl || (pet.type === 'CAT' 
+                        ? 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=300&q=80'
+                        : 'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=300&q=80')} 
+                      alt={pet.name} 
+                      className="pet-avatar-img"
+                    />
+                  </div>
+                  <div className="pet-header-line">
+                    <span className="pet-card-name">{pet.name}</span>
+                    <span className="pet-gender-sym">{pet.gender === 'Female' ? '♀' : '♂'}</span>
+                  </div>
+                  <div className="pet-meta-line">
+                    {pet.type === 'DOG' ? 'Dog' : pet.type === 'CAT' ? 'Cat' : pet.type} • {pet.breed || 'Companion'}
+                  </div>
+                  <div className="pet-age-line">
+                    {pet.age} {pet.age === 1 ? 'year' : 'years'}
+                  </div>
+                  <div className="pet-card-footer">
+                    <span className="badge-pill badge-healthy">
+                      ✓ Healthy
+                    </span>
+                    <button 
+                      type="button" 
+                      className="btn-view-pet"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedPet(pet);
+                      }}
+                    >
+                      View Profile
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
 
             {/* Add a Pet Card */}
             <div className="add-pet-dashed-card" onClick={() => setShowAddPet(true)}>
               <div className="add-pet-paw-icon">
-                <PawPrint size={24} />
+                <PawPrint size={22} />
                 <span className="plus-overlay">+</span>
               </div>
               <span className="add-pet-label">Add a Pet</span>
@@ -210,9 +254,9 @@ export default function PetOwnerDashboard() {
             {reminders.length === 0 ? (
               <div className="empty-reminders-box">
                 <Calendar size={28} className="text-muted" />
-                <p>No pending reminders for your pets.</p>
+                <p>No upcoming reminders yet.</p>
                 <button type="button" className="btn-link-action" onClick={() => setShowAddPet(true)}>
-                  + Add Medical Reminder
+                  + Add a reminder
                 </button>
               </div>
             ) : (
@@ -254,7 +298,7 @@ export default function PetOwnerDashboard() {
               center={[28.5355, 77.3910]}
               zoom={13}
               markers={mapMarkers}
-              height="190px"
+              height="200px"
             />
           </div>
 
@@ -275,13 +319,23 @@ export default function PetOwnerDashboard() {
                     </div>
                   </div>
 
-                  <button 
-                    type="button"
-                    className="provider-cta-btn"
-                    onClick={() => setSelectedProvider(p)}
-                  >
-                    {p.actionLabel || (isVet ? 'Call' : isShelter ? 'Get Directions' : 'Contact')}
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button 
+                      type="button"
+                      className="provider-cta-btn"
+                      onClick={() => setSelectedProvider(p)}
+                    >
+                      Call
+                    </button>
+                    <button 
+                      type="button"
+                      className="provider-cta-btn"
+                      style={{ background: '#FFFCF7', border: '1px solid var(--border-warm)', color: 'var(--text-secondary)' }}
+                      onClick={() => navigate('/nearby-help')}
+                    >
+                      Directions
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -289,7 +343,81 @@ export default function PetOwnerDashboard() {
         </div>
       </section>
 
-      {/* 5. Row 3: Dual CTA Cards — Report Distress & Ask AI */}
+      {/* 5. "Little moments, big love" Lifestyle Photo Section */}
+      <section className="lifestyle-section-panel">
+        <div className="lifestyle-header">
+          <h2 className="lifestyle-title">Little moments, big love</h2>
+          <p className="lifestyle-subtitle">Simple care tips for a healthier, happier life.</p>
+        </div>
+
+        <div className="lifestyle-cards-grid">
+          {/* Card 1: Healthy Feeding */}
+          <div className="lifestyle-card" onClick={() => navigate('/learning?topic=fa-first-aid-kit')}>
+            <div className="lifestyle-img-wrap">
+              <img src="/assets/lifestyle-feeding.jpg" alt="Healthy Feeding for pets" />
+            </div>
+            <div className="lifestyle-card-content">
+              <div className="lifestyle-card-top">
+                <div className="lifestyle-icon-badge bg-sage-icon">
+                  <Utensils size={15} />
+                </div>
+                <h4 className="lifestyle-card-title">Healthy Feeding</h4>
+              </div>
+              <p className="lifestyle-card-text">Right food, better lives.</p>
+            </div>
+          </div>
+
+          {/* Card 2: Play & Exercise */}
+          <div className="lifestyle-card" onClick={() => navigate('/learning')}>
+            <div className="lifestyle-img-wrap">
+              <img src="/assets/lifestyle-play.jpg" alt="Play and Exercise outdoors" />
+            </div>
+            <div className="lifestyle-card-content">
+              <div className="lifestyle-card-top">
+                <div className="lifestyle-icon-badge bg-peach-icon">
+                  <Activity size={15} />
+                </div>
+                <h4 className="lifestyle-card-title">Play & Exercise</h4>
+              </div>
+              <p className="lifestyle-card-text">Keep them active.</p>
+            </div>
+          </div>
+
+          {/* Card 3: Rest & Comfort */}
+          <div className="lifestyle-card" onClick={() => navigate('/learning')}>
+            <div className="lifestyle-img-wrap">
+              <img src="/assets/lifestyle-rest.jpg" alt="Rest and Comfort sleep" />
+            </div>
+            <div className="lifestyle-card-content">
+              <div className="lifestyle-card-top">
+                <div className="lifestyle-icon-badge bg-blue-icon">
+                  <Moon size={15} />
+                </div>
+                <h4 className="lifestyle-card-title">Rest & Comfort</h4>
+              </div>
+              <p className="lifestyle-card-text">Good sleep, happy pets.</p>
+            </div>
+          </div>
+
+          {/* Card 4: Regular Checkups */}
+          <div className="lifestyle-card" onClick={() => navigate('/nearby-help')}>
+            <div className="lifestyle-img-wrap">
+              <img src="/assets/lifestyle-vet.jpg" alt="Regular veterinary checkups" />
+            </div>
+            <div className="lifestyle-card-content">
+              <div className="lifestyle-card-top">
+                <div className="lifestyle-icon-badge bg-lavender-icon">
+                  <Stethoscope size={15} />
+                </div>
+                <h4 className="lifestyle-card-title">Regular Checkups</h4>
+              </div>
+              <p className="lifestyle-card-text">Prevention matters.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 6. Row 3: Dual CTA Cards — Report Distress & Ask AI */}
       <div className="dashboard-dual-cta-row">
         {/* Left: Report in distress */}
         <div className="cta-banner-card cta-banner-report">

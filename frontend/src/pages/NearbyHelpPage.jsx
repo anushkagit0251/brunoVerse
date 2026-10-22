@@ -145,10 +145,9 @@ export default function NearbyHelpPage() {
       phone: n.phone,
       directionsUrl: n.directionsUrl || helpProviderApi.getDirections(n)
     })),
-    // Rescue cases markers
-    ...rescues.slice(0, 8).map(r => ({
-      lat: r.latitude || (28.5355 + (Math.random() - 0.5) * 0.05),
-      lng: r.longitude || (77.3910 + (Math.random() - 0.5) * 0.05),
+    ...rescues.slice(0, 8).map((r, i) => ({
+      lat: r.latitude || (28.5355 + ((i % 5) - 2) * 0.008),
+      lng: r.longitude || (77.3910 + ((i % 4) - 1.5) * 0.008),
       title: `SOS: ${r.animalType} (${r.urgency || 'URGENT'})`,
       subtitle: `${r.location} • ${r.description}`,
       type: 'EMERGENCY',
@@ -462,35 +461,61 @@ export default function NearbyHelpPage() {
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600, marginBottom: '18px' }}>
-                      <Phone size={14} color="#ea580c" />
-                      <span>{vet.phone || '+91 98765 43210'}</span>
+                      <Phone size={14} color={vet.phone ? "#ea580c" : "#94a3b8"} />
+                      <span>{vet.phone || 'Phone not listed'}</span>
                     </div>
 
                     {/* Action Buttons: Call, Directions, Website */}
                     <div style={{ marginTop: 'auto', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      <button
-                        type="button"
-                        onClick={() => vetApi.callClinic(vet.phone)}
-                        style={{
-                          flex: 1,
-                          minWidth: '100px',
-                          background: 'var(--primary)',
-                          color: '#ffffff',
-                          border: 'none',
-                          padding: '9px 12px',
-                          borderRadius: '12px',
-                          fontSize: '13px',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '6px'
-                        }}
-                      >
-                        <Phone size={14} />
-                        <span>Call Vet</span>
-                      </button>
+                      {vet.phone ? (
+                        <button
+                          type="button"
+                          onClick={() => vetApi.callClinic(vet.phone)}
+                          style={{
+                            flex: 1,
+                            minWidth: '100px',
+                            background: 'var(--primary)',
+                            color: '#ffffff',
+                            border: 'none',
+                            padding: '9px 12px',
+                            borderRadius: '12px',
+                            fontSize: '13px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <Phone size={14} />
+                          <span>Call Vet</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled
+                          style={{
+                            flex: 1,
+                            minWidth: '100px',
+                            background: '#f1f5f9',
+                            color: '#94a3b8',
+                            border: 'none',
+                            padding: '9px 12px',
+                            borderRadius: '12px',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            cursor: 'not-allowed',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <Phone size={14} />
+                          <span>No Phone</span>
+                        </button>
+                      )}
 
                       <a
                         href={vet.directionsUrl || vetApi.getDirectionsUrl(vet)}
