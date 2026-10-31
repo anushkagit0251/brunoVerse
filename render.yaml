@@ -1,0 +1,24 @@
+# Render Blueprint – free web service for BrunoVerse
+# Render dashboard → New → Blueprint → pick this repo. You'll be asked for the values marked sync:false.
+services:
+  - type: web
+    name: brunoverse
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: JDBC_URL          # jdbc:mysql://HOST:PORT/defaultdb?sslMode=REQUIRED (from Aiven)
+        sync: false
+      - key: DB_USER           # avnadmin
+        sync: false
+      - key: DB_PASSWORD       # from Aiven
+        sync: false
+      - key: ADMIN_EMAILS      # your email
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DEMO_DATA
+        value: "false"
