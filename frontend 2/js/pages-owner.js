@@ -257,7 +257,8 @@ function pageReport() {
       <div class="loc-box">
         <div class="map-box sm" id="reportMap"></div>
         <div class="loc-info"><p id="locText">${icon('locate', 16)} Getting your GPS location…</p>
-          <button type="button" class="btn btn-soft sm" id="relocate">${icon('locate', 15)} Use my current location</button></div>
+          <button type="button" class="btn btn-soft sm" id="relocate">${icon('locate', 15)} Use my current location</button>
+          <div class="place-search"><input id="placeQ" placeholder="Or type the area, e.g. Sector 62 Noida"><button type="button" class="btn btn-ghost sm" id="placeGo">${icon('search', 14)}</button></div></div>
       </div>
       <label>Landmark / exact spot<input name="address" id="addrIn" placeholder="e.g. Opposite the bakery, under the parked car" value="${esc(reportDraft.address)}"></label>
 
@@ -301,17 +302,35 @@ function bindReport() {
     const m = Maps.make('reportMap', { center: l, zoom: 16, showMe: false, fit: false });
     if (m) {
       const mk = L.marker([l.lat, l.lng], { icon: pinIcon('case'), draggable: true }).addTo(m).bindPopup('Drag me to the exact spot').openPopup();
-      mk.on('dragend', () => { const p = mk.getLatLng(); d.loc = { lat: p.lat, lng: p.lng }; setLoc(); });
+      mk.on('dragend', () => { const p = mk.getLatLng(); d.loc = { lat: p.lat, lng: p.lng }; d.approx = false; setLoc(); });
     }
   };
   const setLoc = async () => {
     const l = d.loc || Geo.current();
-    $('#locText').innerHTML = `${icon('pin', 16)} <b>${l.lat.toFixed(5)}, ${l.lng.toFixed(5)}</b> ${Geo.loc ? `<small class="muted">(GPS ±${Geo.loc.acc || '?'} m)</small>` : '<small class="muted">(approximate – allow location for accuracy)</small>'}`;
+    $('#locText').innerHTML = `${icon('pin', 16)} <b>${l.lat.toFixed(5)}, ${l.lng.toFixed(5)}</b> ${Geo.loc && Geo.km(Geo.loc, l) < 0.01 ? `<small class="muted">(GPS ±${Geo.loc.acc ?? '?'} m)</small>` : '<small class="muted">(set on the map)</small>'}`;
     const a = await Geo.reverse(l);
     if (location.hash.startsWith('#/report') && $('#locText')) $('#locText').innerHTML += `<br><small>${esc(a)}</small>`;
     d.geoAddress = a;
   };
-  const getGPS = async () => { $('#locText').innerHTML = `${icon('locate', 16)} Getting your GPS location…`; const l = await Geo.locate(); d.loc = { lat: l.lat, lng: l.lng }; drawMap(); setLoc(); $('#nearRescuers').innerHTML = helpersHtml(); };
+  const getGPS = async () => {
+    $('#locText').innerHTML = `${icon('locate', 16)} Getting your GPS location…`;
+    const l = await Geo.locate();
+    if (!$('#locText')) return;
+    if (Geo.status !== 'ok') { $('#locText').innerHTML = `<span class="red">${icon('alert', 16)} ${esc(Geo.lastError)}</span>`; if (!d.loc) { d.loc = { lat: l.lat, lng: l.lng }; d.approx = true; drawMap(); } return; }
+    d.loc = { lat: l.lat, lng: l.lng }; d.approx = false; drawMap(); setLoc(); $('#nearRescuers').innerHTML = helpersHtml();
+  };
+  const findPlace = async () => {
+    const q = $('#placeQ').value.trim(); if (!q) return;
+    $('#placeGo').disabled = true;
+    try {
+      const p = await Geo.search(q);
+      if (!p) { toast('Place not found. Try a nearby landmark or area name.', 'warn'); return; }
+      d.loc = { lat: p.lat, lng: p.lng }; d.approx = false; drawMap(); setLoc(); toast('📍 Location set. Drag the pin to the exact spot.');
+    } catch (e) { toast('Search needs an internet connection.', 'warn'); }
+    finally { if ($('#placeGo')) $('#placeGo').disabled = false; }
+  };
+  $('#placeGo').onclick = findPlace;
+  $('#placeQ').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); findPlace(); } };
   if (!d.loc) getGPS(); else { drawMap(); setLoc(); }
   $('#relocate').onclick = getGPS;
 
@@ -355,7 +374,8 @@ function bindReport() {
     e.preventDefault();
     const f = formData(e.target);
     if (!d.cond.length && !f.description) return toast('Please tell us what’s wrong with the animal.', 'warn');
-    const loc = d.loc || Geo.current();
+    if (d.approx || !d.loc) { toast('Please set where the animal is: allow location, search the area, or drag the pin on the map.', 'warn'); $('#placeQ')?.focus(); return; }
+    const loc = d.loc;
     const txt = f.description + ' ' + d.cond.map(c => COND_TEXT[c] || c).join(' ');
     const tr = AI.triage(txt);
     const needs = d.cond.includes('Hungry') && d.cond.length === 1 ? 'Food Needed' : d.cond.includes('Abandoned babies') ? 'Rescue Needed' : tr.level === 'critical' ? 'Urgent' : 'Medical Help';

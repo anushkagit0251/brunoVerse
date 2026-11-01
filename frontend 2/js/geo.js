@@ -8,13 +8,20 @@ const Geo = {
 
   current() { return this.loc || Store.db.anchor || DEFAULT_LOC; },
 
-  // Ask the browser for the user's real location
+  lastError: '',
+
+  // Ask the browser for the user's real location: precise GPS first, then a quicker Wi-Fi/network fix
   locate({ silent = false } = {}) {
     return new Promise(resolve => {
-      if (!('geolocation' in navigator)) { this.status = 'unavailable'; resolve(this.current()); return; }
+      if (!('geolocation' in navigator) || !window.isSecureContext) {
+        this.status = 'unavailable';
+        this.lastError = 'Location only works on https:// pages. Open the https link of BrunoVerse.';
+        if (!silent) toast(this.lastError, 'warn');
+        resolve(this.current()); return;
+      }
       this.status = 'asking';
-      navigator.geolocation.getCurrentPosition(pos => {
-        this.status = 'ok';
+      const ok = pos => {
+        this.status = 'ok'; this.lastError = '';
         this.loc = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: Math.round(pos.coords.accuracy), gps: true };
         const a = Store.db.anchor;
         // Re-anchor demo data around the real location (first fix or moved > 5 km)
@@ -22,12 +29,32 @@ const Geo = {
         if (!silent) toast(`📍 Location found (±${this.loc.acc} m)`);
         this.fetchRealPlaces(this.loc);
         resolve(this.loc);
-      }, err => {
+      };
+      const fail = err => {
         this.status = err.code === 1 ? 'denied' : 'unavailable';
-        if (!silent) toast(err.code === 1 ? 'Location is not available here — showing the demo area. Drag the pin to the exact spot.' : 'Could not get location — showing demo area.', 'warn');
+        const mac = /Mac/.test(navigator.platform || navigator.userAgent);
+        this.lastError = err.code === 1
+          ? 'Location permission is blocked. Tap the 🔒 / ⓘ icon next to the web address → Location → Allow, then press “Use my current location” again.'
+          : err.code === 3
+            ? 'Finding your location took too long. Turn on Wi-Fi or move near a window and try again, or search the place / drag the pin.'
+            : (mac ? 'Your Mac could not find its location. Turn on System Settings → Privacy & Security → Location Services, and allow your browser there.'
+                   : 'Your phone could not find its location. Turn on Location (GPS) in your phone settings and try again.');
+        if (!silent) toast(this.lastError, 'warn');
         resolve(this.current());
-      }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
+      };
+      navigator.geolocation.getCurrentPosition(ok, err => {
+        if (err.code === 1) return fail(err);
+        // Retry without high accuracy (laptops have no GPS chip; Wi-Fi location is enough)
+        navigator.geolocation.getCurrentPosition(ok, fail, { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 });
+      }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
     });
+  },
+
+  // Find a place by name (when GPS is unavailable)
+  async search(q) {
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=in&q=${encodeURIComponent(q)}`, { headers: { 'Accept-Language': 'en' } });
+    const j = await r.json();
+    return j[0] ? { lat: +j[0].lat, lng: +j[0].lon, name: j[0].display_name } : null;
   },
 
   watch(cb) {
