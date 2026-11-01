@@ -7,7 +7,7 @@
    In production this maps 1:1 to Spring Boot REST + MySQL tables.
    ========================================================= */
 
-const DB_KEY = 'bv_db_v2';
+const DB_KEY = 'bv_db_v3';
 const SESSION_KEY = 'bv_session';
 const DEFAULT_LOC = { lat: 28.5700, lng: 77.3260 }; // Noida (used until GPS is allowed)
 
@@ -34,44 +34,49 @@ const H = 3600e3, D = 24 * H;
 
 /* ---------------- Seed data ---------------- */
 function seedData() {
+  // Real launch (BRUNOVERSE_DEMO = false in config.js): start empty – no sample people, clinics or cases
+  if (window.BRUNOVERSE_DEMO === false) {
+    return { version: 3, anchor: null, users: [], places: [], cases: [], pets: [], appointments: [], threads: [], posts: [], activity: [], notifications: [],
+      signups: [], teams: [], orgRequests: [], settings: { aiKey: '', aiModel: 'gemini-2.0-flash' } };
+  }
   const t = now();
   // dLat/dLng are offsets from the user's location so the demo is always "nearby"
   const places = [
-    { id: 'p1', type: 'vet', name: "Dr. Sharma's Pet Clinic", phone: '+91 90000 11001', dLat: 0.0085, dLng: 0.0052, hours: '9 AM – 9 PM', verified: true, services: 'OPD, Vaccination, Surgery', rating: 4.8, emergency: true },
-    { id: 'p2', type: 'vet', name: 'Dr. Mehta Veterinary Hospital', phone: '+91 90000 11002', dLat: -0.0155, dLng: 0.0121, hours: '24 × 7', verified: true, services: 'Emergency, X-Ray, ICU', rating: 4.7, emergency: true },
-    { id: 'p3', type: 'shelter', name: 'Happy Paws Shelter', phone: '+91 90000 11003', dLat: 0.0201, dLng: -0.0098, hours: '8 AM – 7 PM', verified: true, services: 'Shelter, Adoption, Foster', rating: 4.6 },
-    { id: 'p4', type: 'ngo', name: 'Paw Care Foundation', phone: '+91 90000 11004', dLat: -0.0242, dLng: -0.0187, hours: '24 × 7 helpline', verified: true, services: 'Rescue, Ambulance, Sterilisation', rating: 4.9, emergency: true },
-    { id: 'p5', type: 'rescuer', name: 'Rohan (Volunteer)', phone: '+91 90000 11005', dLat: 0.0282, dLng: 0.0113, hours: 'Evenings', verified: true, services: 'Feeder / Rescuer', rating: 4.8 },
-    { id: 'p6', type: 'rescuer', name: 'Priya – Street Paws Squad', phone: '+91 90000 11006', dLat: -0.0091, dLng: -0.0224, hours: '7 AM – 11 PM', verified: true, services: 'Rescue, First Aid, Transport', rating: 4.9, emergency: true },
-    { id: 'p7', type: 'ngo', name: 'City Animal Ambulance', phone: '+91 90000 11007', dLat: 0.0365, dLng: -0.0305, hours: '24 × 7', verified: true, services: 'Animal ambulance', rating: 4.5, emergency: true },
-    { id: 'p8', type: 'feeder', name: 'Gentle Hearts Feeders', phone: '+91 90000 11008', dLat: 0.0123, dLng: 0.0287, hours: '6 – 9 PM', verified: false, services: 'Daily feeding, Water bowls', rating: 4.4 },
-    { id: 'p9', type: 'vet', name: 'Care & Cure Animal Clinic', phone: '+91 90000 11009', dLat: -0.0322, dLng: 0.0254, hours: '10 AM – 8 PM', verified: true, services: 'OPD, Dental, Grooming', rating: 4.3 },
+    { id: 'p1', type: 'vet', name: "Dr. Sharma's Pet Clinic", phone: '', dLat: 0.0085, dLng: 0.0052, hours: '9 AM – 9 PM', verified: true, services: 'OPD, Vaccination, Surgery', rating: 4.8, emergency: true },
+    { id: 'p2', type: 'vet', name: 'Dr. Mehta Veterinary Hospital', phone: '', dLat: -0.0155, dLng: 0.0121, hours: '24 × 7', verified: true, services: 'Emergency, X-Ray, ICU', rating: 4.7, emergency: true },
+    { id: 'p3', type: 'shelter', name: 'Happy Paws Shelter', phone: '', dLat: 0.0201, dLng: -0.0098, hours: '8 AM – 7 PM', verified: true, services: 'Shelter, Adoption, Foster', rating: 4.6 },
+    { id: 'p4', type: 'ngo', name: 'Paw Care Foundation', phone: '', dLat: -0.0242, dLng: -0.0187, hours: '24 × 7 helpline', verified: true, services: 'Rescue, Ambulance, Sterilisation', rating: 4.9, emergency: true },
+    { id: 'p5', type: 'rescuer', name: 'Rohan (Volunteer)', phone: '', dLat: 0.0282, dLng: 0.0113, hours: 'Evenings', verified: true, services: 'Feeder / Rescuer', rating: 4.8 },
+    { id: 'p6', type: 'rescuer', name: 'Priya – Street Paws Squad', phone: '', dLat: -0.0091, dLng: -0.0224, hours: '7 AM – 11 PM', verified: true, services: 'Rescue, First Aid, Transport', rating: 4.9, emergency: true },
+    { id: 'p7', type: 'ngo', name: 'City Animal Ambulance', phone: '', dLat: 0.0365, dLng: -0.0305, hours: '24 × 7', verified: true, services: 'Animal ambulance', rating: 4.5, emergency: true },
+    { id: 'p8', type: 'feeder', name: 'Gentle Hearts Feeders', phone: '', dLat: 0.0123, dLng: 0.0287, hours: '6 – 9 PM', verified: false, services: 'Daily feeding, Water bowls', rating: 4.4 },
+    { id: 'p9', type: 'vet', name: 'Care & Cure Animal Clinic', phone: '', dLat: -0.0322, dLng: 0.0254, hours: '10 AM – 8 PM', verified: true, services: 'OPD, Dental, Grooming', rating: 4.3 },
   ];
 
   const users = [
-    { id: 'u_anushka', name: 'Anushka Gupta', email: 'anushka@demo.in', password: 'demo123', phone: '+91 90000 00001', role: 'owner', city: 'Noida', avatar: '', joined: t - 120 * D },
-    { id: 'u_rohit', name: 'Rohit Sharma', email: 'rohit@demo.in', password: 'demo123', phone: '+91 90000 00002', role: 'rescuer', city: 'Noida', avatar: '', joined: t - 400 * D, available: true, verified: true, baseCompleted: 11, baseHelped: 13, dLat: 0.0061, dLng: -0.0072 },
+    { id: 'u_anushka', name: 'Anushka Gupta', email: 'anushka@demo.in', password: 'demo123', phone: '', role: 'owner', city: 'Noida', avatar: '', joined: t - 120 * D },
+    { id: 'u_rohit', name: 'Rohit Sharma', email: 'rohit@demo.in', password: 'demo123', phone: '', role: 'rescuer', city: 'Noida', avatar: '', joined: t - 400 * D, available: true, verified: true, baseCompleted: 11, baseHelped: 13, dLat: 0.0061, dLng: -0.0072 },
   ];
 
   const tl = (status, at, note, by) => ({ status, at, note, by });
   const cases = [
-    { id: 'c1', reporterId: 'u_other1', reporterName: 'Kavya M.', reporterPhone: '+91 90000 22001', animal: 'Dog', title: 'Injured Dog', needs: 'Urgent', urgency: 'critical',
+    { id: 'c1', reporterId: 'u_other1', reporterName: 'Kavya M.', reporterPhone: '', animal: 'Dog', title: 'Injured Dog', needs: 'Urgent', urgency: 'critical',
       condition: ['Bleeding', 'Limping'], description: 'Brown street dog with a deep cut on the back leg, bleeding slightly and not putting weight on it. Very scared, hiding under a parked car.',
       dLat: 0.0108, dLng: 0.0004, address: 'Near Market Road, opposite the bakery', media: [PHOTOS.injuredDog], createdAt: t - 35 * 60e3, status: 'reported', timeline: [tl('reported', t - 35 * 60e3, 'Case reported with photo', 'Kavya M.')] },
-    { id: 'c2', reporterId: 'u_other2', reporterName: 'Aman V.', reporterPhone: '+91 90000 22002', animal: 'Cat', title: 'Stray Cat (sick)', needs: 'Medical Help', urgency: 'urgent',
+    { id: 'c2', reporterId: 'u_other2', reporterName: 'Aman V.', reporterPhone: '', animal: 'Cat', title: 'Stray Cat (sick)', needs: 'Medical Help', urgency: 'urgent',
       condition: ['Not eating', 'Eye infection'], description: 'Young cat with swollen eyes and discharge, very weak and not eating since yesterday.',
       dLat: -0.0285, dLng: 0.0141, address: 'Residential Block C, near the park gate', media: [PHOTOS.strayCat], createdAt: t - 2.5 * H, status: 'reported', timeline: [tl('reported', t - 2.5 * H, 'Case reported', 'Aman V.')] },
-    { id: 'c3', reporterId: 'u_other3', reporterName: 'Sunita R.', reporterPhone: '+91 90000 22003', animal: 'Cow', title: 'Cow (injured)', needs: 'Needs Shelter', urgency: 'urgent',
+    { id: 'c3', reporterId: 'u_other3', reporterName: 'Sunita R.', reporterPhone: '', animal: 'Cow', title: 'Cow (injured)', needs: 'Needs Shelter', urgency: 'urgent',
       condition: ['Wound', 'Weak'], description: 'Cow with a wound on the neck (possibly from a plastic rope). Sitting by the roadside, needs shelter and treatment.',
       dLat: 0.0402, dLng: -0.0221, address: 'Service road, near the flyover', media: [PHOTOS.cow], createdAt: t - 5 * H, status: 'reported', timeline: [tl('reported', t - 5 * H, 'Case reported', 'Sunita R.')] },
-    { id: 'c4', reporterId: 'u_other4', reporterName: 'Neha K.', reporterPhone: '+91 90000 22004', animal: 'Dog', title: 'Puppies (abandoned)', needs: 'Food Needed', urgency: 'moderate',
+    { id: 'c4', reporterId: 'u_other4', reporterName: 'Neha K.', reporterPhone: '', animal: 'Dog', title: 'Puppies (abandoned)', needs: 'Food Needed', urgency: 'moderate',
       condition: ['Abandoned', 'Hungry'], description: 'Four puppies (~5 weeks) left in a cardboard box. Mother not around. They look hungry but active.',
       dLat: -0.0485, dLng: -0.0362, address: 'Behind the metro station parking', media: [PHOTOS.puppies], createdAt: t - 8 * H, status: 'reported', timeline: [tl('reported', t - 8 * H, 'Case reported', 'Neha K.')] },
-    { id: 'c5', reporterId: 'u_anushka', reporterName: 'Anushka Gupta', reporterPhone: '+91 90000 00001', animal: 'Dog', title: 'Stray puppy with injured paw', needs: 'Rescue Needed', urgency: 'urgent',
+    { id: 'c5', reporterId: 'u_anushka', reporterName: 'Anushka Gupta', reporterPhone: '', animal: 'Dog', title: 'Stray puppy with injured paw', needs: 'Rescue Needed', urgency: 'urgent',
       condition: ['Limping', 'Wound'], description: 'Small puppy near the community park with an injured front paw. Gave water and kept it in shade.',
-      dLat: 0.0052, dLng: -0.0081, address: 'Community park, Gate 2', media: [PHOTOS.puppy], createdAt: t - 70 * 60e3, status: 'on_the_way', rescuerId: 'u_rohit', rescuerName: 'Rohit Sharma', rescuerPhone: '+91 90000 00002',
+      dLat: 0.0052, dLng: -0.0081, address: 'Community park, Gate 2', media: [PHOTOS.puppy], createdAt: t - 70 * 60e3, status: 'on_the_way', rescuerId: 'u_rohit', rescuerName: 'Rohit Sharma', rescuerPhone: '',
       timeline: [tl('reported', t - 70 * 60e3, 'You reported this case', 'Anushka Gupta'), tl('accepted', t - 55 * 60e3, 'Rohit accepted your request', 'Rohit Sharma'), tl('on_the_way', t - 40 * 60e3, 'Rohit is on the way with a first-aid kit', 'Rohit Sharma')] },
-    { id: 'c6', reporterId: 'u_other5', reporterName: 'Vikram S.', reporterPhone: '+91 90000 22005', animal: 'Dog', title: 'Injured Dog', needs: 'Resolved', urgency: 'urgent',
+    { id: 'c6', reporterId: 'u_other5', reporterName: 'Vikram S.', reporterPhone: '', animal: 'Dog', title: 'Injured Dog', needs: 'Resolved', urgency: 'urgent',
       condition: ['Accident'], description: 'Hit by a bike, minor injuries.', dLat: 0.0151, dLng: 0.0201, address: 'Main crossing', media: [PHOTOS.story2], createdAt: t - 26 * H, status: 'resolved', rescuerId: 'u_rohit', rescuerName: 'Rohit Sharma',
       timeline: [tl('reported', t - 26 * H, 'Reported', 'Vikram S.'), tl('accepted', t - 25.5 * H, 'Accepted', 'Rohit Sharma'), tl('resolved', t - 2 * H, 'Treated at Dr. Mehta Hospital & released after recovery', 'Rohit Sharma')] },
   ];
@@ -142,7 +147,7 @@ function seedData() {
 
   activity.forEach(a => { a.id = uid('a'); });
   return {
-    version: 2, anchor: null, users, places, cases, pets, appointments, threads, posts, activity, notifications,
+    version: 3, anchor: null, users, places, cases, pets, appointments, threads, posts, activity, notifications,
     signups: [], teams: [], orgRequests: [],
     settings: { aiKey: '', aiModel: 'gemini-2.0-flash' },
   };
@@ -156,7 +161,7 @@ const Store = {
   listeners: new Set(),
   load() {
     try { this.db = JSON.parse(localStorage.getItem(DB_KEY)); } catch (e) { this.db = null; }
-    if (!this.db || this.db.version !== 2) { this.db = seedData(); this.save(false); }
+    if (!this.db || this.db.version !== 3) { this.db = seedData(); this.save(false); }
     this.relocate(this.db.anchor || DEFAULT_LOC, false);
   },
   save(notify = true) {

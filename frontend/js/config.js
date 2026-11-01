@@ -7,6 +7,10 @@
    Only set it if the website is hosted somewhere else, e.g. 'https://api.brunoverse.in'. */
 window.BRUNOVERSE_API = window.BRUNOVERSE_API || '';
 
+/* false = real launch: no sample clinics, people, numbers or cases are shown.
+   true  = demo mode for presentations (sample data with a clear "Demo mode" banner). */
+window.BRUNOVERSE_DEMO = false;
+
 /* Photo & video storage (needed on free hosts like Render, whose disk is wiped on restart).
    Cloudinary → Settings → Upload → Upload presets → Add → Signing mode: Unsigned.
    Leave cloudName empty to store uploads on the BrunoVerse server instead. */

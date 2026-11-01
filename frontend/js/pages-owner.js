@@ -48,7 +48,7 @@ function ownerHome() {
     ${sectionHead('Nearby Help', '#/help')}
     <div class="nearby-grid">
       <div class="map-box" id="homeMap"></div>
-      <div>${near.map(p => placeRow(p, { compact: true })).join('')}</div>
+      <div>${near.length ? near.map(p => placeRow(p, { compact: true })).join('') : '<p class="muted small">No vets or rescuers listed near you yet. Allow location to see real clinics from OpenStreetMap.</p>'}</div>
     </div>
   </section>
 
@@ -286,11 +286,12 @@ function pageReport() {
       <div class="card ai-live"><div class="sec-head"><h2>${icon('sparkle', 18)} AI quick steps</h2><span class="badge lvl-moderate" id="lvlBadge">Waiting</span></div>
         <div id="aiLive"><p class="muted">Select what’s wrong — emergency steps will appear here instantly so you can help while a rescuer is on the way.</p>${safetyBlock()}</div>
       </div>
-      <div class="card"><h2>Nearest rescuers</h2><div id="nearRescuers">${nearestHelpers(4).map(p => placeRow(p, { message: false })).join('')}</div></div>
+      <div class="card"><h2>Nearest rescuers</h2><div id="nearRescuers">${helpersHtml()}</div></div>
     </aside>
   </div>`;
 }
 
+function helpersHtml() { const l = nearestHelpers(4); return l.length ? l.map(p => placeRow(p, { message: false })).join('') : `<p class="muted small">No verified rescuers or vets are registered near you yet. After reporting, share the case on WhatsApp groups or call your nearest vet.</p>`; }
 function nearestHelpers(n = 4) { return directory().filter(p => ['rescuer', 'ngo'].includes(p.type) && p.hours !== 'Off duty').slice(0, n); }
 
 function bindReport() {
@@ -310,7 +311,7 @@ function bindReport() {
     if (location.hash.startsWith('#/report') && $('#locText')) $('#locText').innerHTML += `<br><small>${esc(a)}</small>`;
     d.geoAddress = a;
   };
-  const getGPS = async () => { $('#locText').innerHTML = `${icon('locate', 16)} Getting your GPS location…`; const l = await Geo.locate(); d.loc = { lat: l.lat, lng: l.lng }; drawMap(); setLoc(); $('#nearRescuers').innerHTML = nearestHelpers(4).map(p => placeRow(p, { message: false })).join(''); };
+  const getGPS = async () => { $('#locText').innerHTML = `${icon('locate', 16)} Getting your GPS location…`; const l = await Geo.locate(); d.loc = { lat: l.lat, lng: l.lng }; drawMap(); setLoc(); $('#nearRescuers').innerHTML = helpersHtml(); };
   if (!d.loc) getGPS(); else { drawMap(); setLoc(); }
   $('#relocate').onclick = getGPS;
 

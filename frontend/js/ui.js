@@ -89,7 +89,7 @@ const NAV = {
     ['opportunities', 'Opportunities', 'heart'], ['settings', 'Settings', 'settings'],
   ],
 };
-const isDemo = () => typeof Api === 'undefined' || !Api.online || Api.demo;
+const isDemo = () => window.BRUNOVERSE_DEMO !== false && (typeof Api === 'undefined' || !Api.online || Api.demo);
 const ROLE_LABEL = { owner: 'Pet Owner', rescuer: 'Rescuer', vet: 'Veterinarian', ngo: 'NGO / Shelter', feeder: 'Feeder / Volunteer' };
 const isRescuerSide = u => ['rescuer', 'vet', 'ngo'].includes(u?.role);
 
@@ -117,6 +117,7 @@ function shell(route, content) {
       <button class="profile" id="profileBtn">${avatar(me, 42)}<span class="hide-sm"><b>${esc(me.name)}</b><small>${ROLE_LABEL[me.role]}</small></span>${icon('arrowR', 16, 'rot90')}</button>
     </div>
   </header>
+  ${isDemo() ? `<div class="demo-banner">${icon('info', 16)} Demo mode – clinics, rescuers, cases and numbers shown are samples, not real people.</div>` : ''}
   <div class="layout">
     <aside class="sidebar" id="sidebar">
       <nav>${(Api.admin ? [...nav, ['admin', 'Admin', 'shield']] : nav).map(([r, label, ic]) => `<a href="#/${r}" class="${route === r ? 'active' : ''}">${icon(ic, 20)}<span>${label}</span>${r === 'messages' && unreadM ? `<i class="pill-count">${unreadM}</i>` : ''}</a>`).join('')}</nav>

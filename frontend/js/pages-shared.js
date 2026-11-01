@@ -59,7 +59,7 @@ function pageCase(id) {
         <a class="btn btn-soft sm" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(shareTxt)}">${icon('whatsapp', 14)} Share on WhatsApp</a>
         <button class="btn btn-ghost sm" id="copyLink">${icon('share', 14)} Copy</button></div></section>
 
-      ${isReporter && c.status !== 'resolved' ? `<section class="card"><h2>Nearest rescuers & NGOs</h2>${nearestHelpers(4).map(p => placeRow(p, { message: !!p.userId })).join('')}</section>` : ''}
+      ${isReporter && c.status !== 'resolved' ? `<section class="card"><h2>Nearest rescuers & NGOs</h2>${helpersHtml()}</section>` : ''}
 
       ${c.status !== 'resolved' && tr.topics.length ? `<section class="card"><h2>${icon('sparkle', 18)} What to do right now</h2>${firstAidCard(tr.topics[0], !isReporter)}<a href="#/ai" class="link small">Ask the AI assistant more →</a></section>` : ''}
     </div>

@@ -620,3 +620,6 @@ input, select, textarea { font: inherit; color: inherit; }
 .legal-public { padding: 24px 16px 60px; background: var(--bg); min-height: 100vh; }
 .legal-links a { color: var(--g700); font-weight: 700; }
 .form label.check a { color: var(--g700); text-decoration: underline; }
+
+/* Demo mode banner */
+.demo-banner { display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--amber); color: #6d4309; font-size: 13px; font-weight: 700; padding: 8px 16px; text-align: center; }
