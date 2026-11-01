@@ -19,8 +19,8 @@ function pageLogin(mode = 'login') {
         <div class="tabs"><button class="${mode === 'login' ? 'on' : ''}" data-mode="login">Log in</button><button class="${mode === 'signup' ? 'on' : ''}" data-mode="signup">Create account</button></div>
         ${mode === 'login' ? `
         <form id="loginForm" class="form">
-          <label>Email or phone<input name="id" required placeholder="you@example.com"></label>
-          <label>Password<input name="password" type="password" required placeholder="••••••"></label>
+          <label>Email or phone<input name="id" required autocomplete="username" placeholder="you@example.com or 98765 43210"></label>
+          <label>Password<input name="password" type="password" required autocomplete="current-password" placeholder="Your password"></label>
           <button class="btn btn-primary full">Log in ${icon('arrowR', 16)}</button>
         </form>
         ${isDemo() && Store.user('u_anushka') ? `<div class="divider"><span>or try the demo</span></div>
@@ -78,8 +78,14 @@ function bindLogin() {
       catch (err) { toast(esc(err.message), 'error'); }
       return;
     }
-    const u = Store.db.users.find(x => (x.email?.toLowerCase() === f.id.toLowerCase() || x.phone?.replace(/\s/g, '') === f.id.replace(/\s/g, '')) && x.password === f.password);
-    if (!u) return toast('Email/phone or password is incorrect. Demo accounts use password <b>demo123</b>.', 'error');
+    const id = f.id.trim().toLowerCase();
+    const digits = s => (s || '').replace(/\D/g, '').slice(-10);
+    const found = Store.db.users.find(x => (x.email || '').toLowerCase() === id || (digits(id).length === 10 && digits(x.phone) === digits(id)));
+    if (!found) return toast(Api.online
+      ? 'No account found with this email or phone. Check it, or choose <b>Create account</b>.'
+      : 'No account found on this device. Accounts are saved on the phone or computer where they were created (until the BrunoVerse server is connected). Choose <b>Create account</b> to make one here.', 'error');
+    if (found.password !== f.password) return toast('Wrong password. Please try again.' + (isDemo() ? ' Demo accounts use <b>demo123</b>.' : ''), 'error');
+    const u = found;
     Store.login(u.id); toast(`Welcome back, ${firstName(u)} 💛`); location.hash = '#/home';
   });
   $('#signupForm')?.addEventListener('submit', async e => {
@@ -98,7 +104,7 @@ function bindLogin() {
       } catch (err) { toast(esc(err.message), 'error'); btn.disabled = false; }
       return;
     }
-    if (Store.db.users.some(x => x.email?.toLowerCase() === f.email.toLowerCase())) return toast('An account with this email already exists.', 'error');
+    if (Store.db.users.some(x => x.email?.toLowerCase() === f.email.trim().toLowerCase())) return toast('An account with this email already exists on this device. Choose <b>Log in</b> instead.', 'error');
     const u = { id: uid('u'), name: f.name, email: f.email, phone: f.phone, password: f.password, role: f.role, city: f.city, avatar: '', joined: now(), available: true, baseCompleted: 0, baseHelped: 0 };
     if (f.loc) { const l = await Geo.locate({ silent: true }); u.lat = l.lat; u.lng = l.lng; }
     Store.db.users.push(u);

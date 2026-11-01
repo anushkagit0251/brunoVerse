@@ -627,3 +627,12 @@ input, select, textarea { font: inherit; color: inherit; }
 /* Place search under the report map */
 .place-search { display: flex; gap: 6px; margin-top: 10px; }
 .place-search input { flex: 1; min-width: 0; padding: 8px 11px; border-radius: 10px; border: 1px solid var(--line); background: #fff; font: inherit; font-size: 13.5px; }
+
+/* Login on phones: show the form near the top */
+@media (max-width: 860px) {
+  .auth-hero { gap: 14px; padding: 22px 20px 26px; }
+  .auth-copy h1 { font-size: 26px; margin-bottom: 0; }
+  .auth-copy p:not(.hand) { font-size: 14.5px; margin: 6px 0 0; }
+  .auth-copy .hand, .auth-stats, .auth-photos { display: none; }
+  .auth-form-wrap { padding: 18px 16px 40px; place-items: start center; }
+}

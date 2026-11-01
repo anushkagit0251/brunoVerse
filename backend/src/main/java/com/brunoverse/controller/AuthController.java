@@ -38,9 +38,9 @@ public class AuthController {
         String password = body.getOrDefault("password", "");
         Optional<AppUser> user = users.findByEmailIgnoreCase(id);
         if (user.isEmpty()) {
-            String phone = id.replace(" ", "");
-            user = users.findAll().stream()
-                    .filter(u -> u.phone != null && u.phone.replace(" ", "").equals(phone))
+            String phone = lastTenDigits(id);
+            user = phone.length() < 10 ? Optional.empty() : users.findAll().stream()
+                    .filter(u -> phone.equals(lastTenDigits(u.phone)))
                     .findFirst();
         }
         if (user.isEmpty() || !user.get().checkPassword(password)) {
@@ -92,6 +92,12 @@ public class AuthController {
         out.put("user", policy.publicView(u, u));
         out.put("admin", policy.isAdmin(u));
         return out;
+    }
+
+    /** "+91 98765 43210", "09876543210" and "9876543210" all match. */
+    private static String lastTenDigits(String s) {
+        String d = s == null ? "" : s.replaceAll("\\D", "");
+        return d.length() > 10 ? d.substring(d.length() - 10) : d;
     }
 
     private static boolean blank(String s) {
